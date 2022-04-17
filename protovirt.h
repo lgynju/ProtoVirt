@@ -292,3 +292,5 @@ bool deallocate_vmcs_region(void) {
 	}
 	return false;
 }
+
+

@@ -22,6 +22,23 @@
 #include "macro.h"
 #include "protovirt.h"
 
+static inline uint64_t my_rdmsr(uint32_t msr)
+{
+	uint32_t a, d;
+
+	__asm__ __volatile__("rdmsr" : "=a"(a), "=d"(d) : "c"(msr) : "memory");
+
+	return a | ((uint64_t) d << 32);
+}
+
+static inline void my_wrmsr(uint32_t msr, uint64_t value)
+{
+	uint32_t a = value;
+	uint32_t d = value >> 32;
+
+	__asm__ __volatile__("wrmsr" :: "a"(a), "d"(d), "c"(msr) : "memory");
+}
+
 // guest vm stack size
 #define GUEST_STACK_SIZE 				64
 // code that will be run by guest
@@ -44,66 +61,67 @@ bool vmxSupport(void)
     if (vmxBit == 1){
         return true;
     }
-    else {
-        return false;
-    }
     return false;
 
 }
 
-
-// CH 23.7, Vol 3
 // Enter in VMX mode
 bool getVmxOperation(void) {
-    //unsigned long cr0;
-	unsigned long cr4;
-	unsigned long cr0;
+	uint64_t cr4;
+	uint64_t cr0;
     uint64_t feature_control;
 	uint64_t required;
 	long int vmxon_phy_region = 0;
-	u32 low1 = 0;
-    // setting CR4.VMXE[bit 13] = 1
-    __asm__ __volatile__("mov %%cr4, %0" : "=r"(cr4) : : "memory");
-    cr4 |= X86_CR4_VMXE;
-    __asm__ __volatile__("mov %0, %%cr4" : : "r"(cr4) : "memory");
+	uint32_t revision_identifier;
+	uint64_t msr_ia32_vmx_basic;
 
-    /*
+
+    /*CH 23.7, Vol 3
 	 * Configure IA32_FEATURE_CONTROL MSR to allow VMXON:
 	 *  Bit 0: Lock bit. If clear, VMXON causes a #GP.
 	 *  Bit 2: Enables VMXON outside of SMX operation. If clear, VMXON
 	 *    outside of SMX causes a #GP.
 	 */
-	required = FEATURE_CONTROL_VMXON_ENABLED_OUTSIDE_SMX;
-	required |= FEATURE_CONTROL_LOCKED;
-	feature_control = __rdmsr1(MSR_IA32_FEATURE_CONTROL);
-
+	feature_control = my_rdmsr(MSR_IA32_FEATURE_CONTROL);
+	required = FEATURE_CONTROL_LOCKED; //this bit must be set before execute vmxon, and msr cannot be write after set.
+	required |= FEATURE_CONTROL_VMXON_ENABLED_OUTSIDE_SMX;
+	required |= FEATURE_CONTROL_VMXON_ENABLED_INSIDE_SMX; //SMX feature, just enable it.maybe useful
 	if ((feature_control & required) != required) {
-		wrmsr(MSR_IA32_FEATURE_CONTROL, feature_control | required, low1);
+		printk(KERN_INFO "write MSR_IA32_FEATURE_CONTROL register\n");
+		my_wrmsr(MSR_IA32_FEATURE_CONTROL, feature_control | required); //this is a 64bit register
 	}
 
-	/*
+	/* In 23.8 chapter, more details in A.7 and A.8, for no reason, just like a game.
 	 * Ensure bits in CR0 and CR4 are valid in VMX operation:
 	 * - Bit X is 1 in _FIXED0: bit X is fixed to 1 in CRx.
 	 * - Bit X is 0 in _FIXED1: bit X is fixed to 0 in CRx.
 	 */
 	__asm__ __volatile__("mov %%cr0, %0" : "=r"(cr0) : : "memory");
-	cr0 &= __rdmsr1(MSR_IA32_VMX_CR0_FIXED1);
-	cr0 |= __rdmsr1(MSR_IA32_VMX_CR0_FIXED0);
+	cr0 &= my_rdmsr(MSR_IA32_VMX_CR0_FIXED1);
+	cr0 |= my_rdmsr(MSR_IA32_VMX_CR0_FIXED0);
 	__asm__ __volatile__("mov %0, %%cr0" : : "r"(cr0) : "memory");
 
 	__asm__ __volatile__("mov %%cr4, %0" : "=r"(cr4) : : "memory");
-	cr4 &= __rdmsr1(MSR_IA32_VMX_CR4_FIXED1);
-	cr4 |= __rdmsr1(MSR_IA32_VMX_CR4_FIXED0);
+	cr4 &= my_rdmsr(MSR_IA32_VMX_CR4_FIXED1);
+	cr4 |= my_rdmsr(MSR_IA32_VMX_CR4_FIXED0);
+	cr4 |= X86_CR4_VMXE;  // setting CR4.VMXE[bit 13] = 1,
 	__asm__ __volatile__("mov %0, %%cr4" : : "r"(cr4) : "memory");
+
+
+    msr_ia32_vmx_basic = my_rdmsr(MSR_IA32_VMX_BASIC);
+	revision_identifier = msr_ia32_vmx_basic; //appendix A.1
+	printk(KERN_INFO "msr vmx basic register %d\n", msr_ia32_vmx_basic);//TODO region size not correct appendix A.1
 
 	// allocating 4kib((4096 bytes) of memory for vmxon region
 	vmxonRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
+	// Same with vmcs in terms of form, but not the same meaning.
+	// https://zhuanlan.zhihu.com/p/49400702?msclkid=271190cabe2a11eca695cb5d2f964c08
    	if(vmxonRegion==NULL){
 		printk(KERN_INFO "Error allocating vmxon region\n");
       	return false;
    	}
 	vmxon_phy_region = __pa(vmxonRegion);
-	*(uint32_t *)vmxonRegion = vmcs_revision_id();
+	*(uint32_t *)vmxonRegion = revision_identifier; //24.11.5
 	if (_vmxon(vmxon_phy_region))
 		return false;
 	return true;
