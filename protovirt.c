@@ -110,18 +110,18 @@ bool getVmxOperation(void) {
 
     msr_ia32_vmx_basic = my_rdmsr(MSR_IA32_VMX_BASIC);
 	revision_identifier = msr_ia32_vmx_basic; //appendix A.1
-	printk(KERN_INFO "msr vmx basic register %d\n", msr_ia32_vmx_basic);//TODO region size not correct appendix A.1
+	printk(KERN_INFO "msr vmx basic register %llx\n", msr_ia32_vmx_basic);//TODO region size not correct appendix A.1
 
 	// allocating 4kib((4096 bytes) of memory for vmxon region
-	vmxonRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
+	g_vmxonRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global
 	// Same with vmcs in terms of form, but not the same meaning.
 	// https://zhuanlan.zhihu.com/p/49400702?msclkid=271190cabe2a11eca695cb5d2f964c08
-   	if(vmxonRegion==NULL){
+    if(g_vmxonRegion==NULL){
 		printk(KERN_INFO "Error allocating vmxon region\n");
       	return false;
    	}
-	vmxon_phy_region = __pa(vmxonRegion);
-	*(uint32_t *)vmxonRegion = revision_identifier; //24.11.5
+	vmxon_phy_region = __pa(g_vmxonRegion);
+	*(uint32_t *)g_vmxonRegion = revision_identifier; //24.11.5
 	if (_vmxon(vmxon_phy_region))
 		return false;
 	return true;
@@ -133,15 +133,18 @@ bool getVmxOperation(void) {
 bool vmcsOperations(void) {
 	long int vmcsPhyRegion = 0;
 	if (allocVmcsRegion()){
-		vmcsPhyRegion = __pa(vmcsRegion);
-		*(uint32_t *)vmcsRegion = vmcs_revision_id();
+		vmcsPhyRegion = __pa(g_vmcsRegion);
+		*(uint32_t *)g_vmcsRegion = my_rdmsr(MSR_IA32_VMX_BASIC);
 	}
 	else {
 		return false;
 	}
 
+    if (vmclear(vmcsPhyRegion))
+		return false;
+    
 	//making the vmcs active and current
-	if (_vmptrld(vmcsPhyRegion))
+	if (vmptrld(vmcsPhyRegion))
 		return false;
 	return true;
 }

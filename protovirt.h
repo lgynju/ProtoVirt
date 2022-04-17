@@ -1,9 +1,9 @@
 #include "macro.h"
 
 // vmxon region
-uint64_t *vmxonRegion = NULL;
+uint64_t *g_vmxonRegion = NULL;
 //vmcs region
-uint64_t *vmcsRegion = NULL;
+uint64_t *g_vmcsRegion = NULL;
 
 
 struct desc64 {
@@ -81,27 +81,31 @@ static inline int vmwrite(uint64_t encoding, uint64_t value)
 }
 
 
-// CH 24.2, Vol 3
-// getting vmcs revision identifier
-static inline uint32_t vmcs_revision_id(void)
-{
-	return __rdmsr1(MSR_IA32_VMX_BASIC);
-}
-
-
 // CH 23.7, Vol 3
 // Enter in VMX mode
 bool allocVmcsRegion(void) {
-	vmcsRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
-   	if(vmcsRegion==NULL){
+	g_vmcsRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
+   	if(g_vmcsRegion==NULL){
 		printk(KERN_INFO "Error allocating vmcs region\n");
       	return false;
    	}
 	return true;
 }
 
+//from /linux-4.19.237/tools/testing/selftests/kvm/include/vmx.h
+static inline int vmclear(uint64_t vmcs_pa)
+{
+	uint8_t ret;
 
-static inline int _vmptrld(uint64_t vmcs_pa)
+	__asm__ __volatile__ ("vmclear %[pa]; setna %[ret]"
+		: [ret]"=rm"(ret)
+		: [pa]"m"(vmcs_pa)
+		: "cc", "memory");
+
+	return ret;
+}
+
+static inline int vmptrld(uint64_t vmcs_pa)
 {
 	uint8_t ret;
 
@@ -276,8 +280,8 @@ uint32_t vmExit_reason(void) {
 
 // Dealloc vmxon region
 bool deallocate_vmxon_region(void) {
-	if(vmxonRegion){
-	    kfree(vmxonRegion);
+	if(g_vmxonRegion){
+	    kfree(g_vmxonRegion);
 		return true;
    	}
    	return false;
@@ -285,9 +289,9 @@ bool deallocate_vmxon_region(void) {
 
 /* Dealloc vmcs guest region*/
 bool deallocate_vmcs_region(void) {
-	if(vmcsRegion){
+	if(g_vmcsRegion){
     	printk(KERN_INFO "Freeing allocated vmcs region!\n");
-    	kfree(vmcsRegion);
+    	kfree(g_vmcsRegion);
 		return true;
 	}
 	return false;
