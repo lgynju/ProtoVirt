@@ -159,18 +159,18 @@ bool initVmcsControlField(void) {
 	// setting pin based controls, proc based controls, vm exit controls
 	// and vm entry controls
 
-	uint32_t pinbased_control0 = __rdmsr1(MSR_IA32_VMX_PINBASED_CTLS);
-	uint32_t pinbased_control1 = __rdmsr1(MSR_IA32_VMX_PINBASED_CTLS) >> 32;
-	uint32_t procbased_control0 = __rdmsr1(MSR_IA32_VMX_PROCBASED_CTLS);
-	uint32_t procbased_control1 = __rdmsr1(MSR_IA32_VMX_PROCBASED_CTLS) >> 32;
-	uint32_t procbased_secondary_control0 = __rdmsr1(MSR_IA32_VMX_PROCBASED_CTLS2);
-	uint32_t procbased_secondary_control1 = __rdmsr1(MSR_IA32_VMX_PROCBASED_CTLS2) >> 32;
-	uint32_t vm_exit_control0 = __rdmsr1(MSR_IA32_VMX_EXIT_CTLS);
-	uint32_t vm_exit_control1 = __rdmsr1(MSR_IA32_VMX_EXIT_CTLS) >> 32;
-	uint32_t vm_entry_control0 = __rdmsr1(MSR_IA32_VMX_ENTRY_CTLS);
-	uint32_t vm_entry_control1 = __rdmsr1(MSR_IA32_VMX_ENTRY_CTLS) >> 32;
+	uint32_t pinbased_control0 = my_rdmsr(MSR_IA32_VMX_PINBASED_CTLS);
+	uint32_t pinbased_control1 = my_rdmsr(MSR_IA32_VMX_PINBASED_CTLS) >> 32;
+	uint32_t procbased_control0 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS);
+	uint32_t procbased_control1 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS) >> 32;
+	uint32_t procbased_secondary_control0 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2);
+	uint32_t procbased_secondary_control1 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2) >> 32;
+	uint32_t vm_exit_control0 = my_rdmsr(MSR_IA32_VMX_EXIT_CTLS);
+	uint32_t vm_exit_control1 = my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) >> 32;
+	uint32_t vm_entry_control0 = my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS);
+	uint32_t vm_entry_control1 = my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) >> 32;
 
-
+    // I am not sure why the & is here?
 	// setting final value to write to control fields
 	uint32_t pinbased_control_final = (pinbased_control0 & pinbased_control1);
 	uint32_t procbased_control_final = (procbased_control0 & procbased_control1);
@@ -205,9 +205,9 @@ bool initVmcsControlField(void) {
 
 	vmwrite(VIRTUAL_PROCESSOR_ID, 0);
 
-	vmwrite(VM_EXIT_CONTROLS, __rdmsr1(MSR_IA32_VMX_EXIT_CTLS) |
+	vmwrite(VM_EXIT_CONTROLS, my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
 		VM_EXIT_HOST_ADDR_SPACE_SIZE);
-	vmwrite(VM_ENTRY_CONTROLS, __rdmsr1(MSR_IA32_VMX_ENTRY_CTLS) |
+	vmwrite(VM_ENTRY_CONTROLS, my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
 		VM_ENTRY_IA32E_MODE);
 
 
@@ -225,14 +225,14 @@ bool initVmcsControlField(void) {
 	vmwrite(HOST_FS_SELECTOR, get_fs1());
 	vmwrite(HOST_GS_SELECTOR, get_gs1());
 	vmwrite(HOST_TR_SELECTOR, get_tr1());
-	vmwrite(HOST_FS_BASE, __rdmsr1(MSR_FS_BASE));
-	vmwrite(HOST_GS_BASE, __rdmsr1(MSR_GS_BASE));
+	vmwrite(HOST_FS_BASE, my_rdmsr(MSR_FS_BASE));
+	vmwrite(HOST_GS_BASE, my_rdmsr(MSR_GS_BASE));
 	vmwrite(HOST_TR_BASE, get_desc64_base((struct desc64 *)(get_gdt_base1() + get_tr1())));
 	vmwrite(HOST_GDTR_BASE, get_gdt_base1());
 	vmwrite(HOST_IDTR_BASE, get_idt_base1());
-	vmwrite(HOST_IA32_SYSENTER_ESP, __rdmsr1(MSR_IA32_SYSENTER_ESP));
-	vmwrite(HOST_IA32_SYSENTER_EIP, __rdmsr1(MSR_IA32_SYSENTER_EIP));
-	vmwrite(HOST_IA32_SYSENTER_CS, __rdmsr(MSR_IA32_SYSENTER_CS));
+	vmwrite(HOST_IA32_SYSENTER_ESP, my_rdmsr(MSR_IA32_SYSENTER_ESP));
+	vmwrite(HOST_IA32_SYSENTER_EIP, my_rdmsr(MSR_IA32_SYSENTER_EIP));
+	vmwrite(HOST_IA32_SYSENTER_CS, my_rdmsr(MSR_IA32_SYSENTER_CS));
 
 
 
