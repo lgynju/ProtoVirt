@@ -22,6 +22,121 @@
 #include "macro.h"
 #include "protovirt.h"
 
+
+
+static __always_inline void save_volatile_regs(void)
+{
+	asm volatile(
+		"push %%r15\n"
+		"push %%r14\n"
+		"push %%r13\n"
+		"push %%r12\n"
+		"push %%r11\n"
+		"push %%r10\n"
+		"push %%r9\n"
+		"push %%r8\n"
+		"push %%rdi\n"
+		"push %%rsi\n"
+		"push %%rbp\n"
+		"push %%rbp\n" // placeholder for rsp
+		"push %%rbx\n"
+		"push %%rdx\n"
+		"push %%rcx\n"
+		"push %%rax\n"
+		:
+	);
+}
+
+
+static __always_inline void restore_volatile_regs(void)
+{
+	asm volatile(
+		"pop %%rax\n"
+		"pop %%rcx\n"
+		"pop %%rdx\n"
+		"pop %%rbx\n"
+		"pop %%rbp\n" // placeholder for rsp
+		"pop %%rbp\n"
+		"pop %%rsi\n"
+		"pop %%rdi\n"
+		"pop %%r8\n"
+		"pop %%r9\n"
+		"pop %%r10\n"
+		"pop %%r11\n"
+		"pop %%r12\n"
+		"pop %%r13\n"
+		"pop %%r14\n"
+		"pop %%r15\n"
+		:
+	);
+}
+
+
+static __always_inline void fake_vmlaunch(uint64_t guest_rsp, uint64_t guest_rip)
+{
+	asm volatile(
+		"mov %[guest_rsp], %%rsp\n"
+		"jump *%[guest_rip]\n"
+		:
+		: [guest_rsp] "m"(guest_rsp),
+		  [guest_rip] "m"(guest_rip)
+	);
+}
+
+
+
+
+
+static __always_inline void print_regs(void)
+{
+	uint64_t rax, rcx, rdx, rbx, rbp, rsp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
+
+	asm volatile(
+		"mov %%rax, %[rax]\n"
+		"mov %%rcx, %[rcx]\n"
+		"mov %%rdx, %[rdx]\n"
+		"mov %%rbx, %[rbx]\n"
+		"mov %%rbp, %[rbp]\n"
+		"mov %%rsp, %[rsp]\n"
+		"mov %%rsi, %[rsi]\n"
+		"mov %%rdi, %[rdi]\n"
+		"mov %%r8, %[r8]\n"
+		"mov %%r9, %[r9]\n"
+		"mov %%r10, %[r10]\n"
+		"mov %%r11, %[r11]\n"
+		"mov %%r12, %[r12]\n"
+		"mov %%r13, %[r13]\n"
+		"mov %%r14, %[r14]\n"
+		"mov %%r15, %[r15]\n"
+		: [rax] "=m"(rax),
+		  [rcx] "=m"(rcx),
+		  [rdx] "=m"(rdx),
+		  [rbx] "=m"(rbx),
+		  [rbp] "=m"(rbp),
+		  [rsp] "=m"(rsp),
+		  [rsi] "=m"(rsi),
+		  [rdi] "=m"(rdi),
+		  [r8] "=m"(r8),
+		  [r9] "=m"(r9),
+		  [r10] "=m"(r10),
+		  [r11] "=m"(r11),
+		  [r12] "=m"(r12),
+		  [r13] "=m"(r13),
+		  [r14] "=m"(r14),
+		  [r15] "=m"(r15)
+	);
+	save_volatile_regs();
+	printk(KERN_INFO "rax: 0x%016llX, rcx: 0x%016llX, rdx: 0x%016llX, rbx: 0x%016llX\n", rax, rcx, rdx, rbx);
+	printk(KERN_INFO "rbp: 0x%016llX, rsp: 0x%016llX, rsi: 0x%016llX, rdi: 0x%016llX\n", rbp, rsp, rsi, rdi);
+	printk(KERN_INFO "r8: 0x%016llX, r9: 0x%016llX, r10: 0x%016llX, r11: 0x%016llX\n", r8, r9, r10, r11);
+	printk(KERN_INFO "r12: 0x%016llX, r13: 0x%016llX, r14: 0x%016llX, r15: 0x%016llX\n", r12, r13, r14, r15);
+	restore_volatile_regs();
+}
+
+
+/////////the above is fake code////////////////
+
+
 static inline uint64_t my_rdmsr(uint32_t msr)
 {
 	uint32_t a, d;
