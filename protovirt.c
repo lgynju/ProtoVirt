@@ -23,7 +23,6 @@
 #include "protovirt.h"
 
 
-
 static __always_inline void save_volatile_regs(void)
 {
 	asm volatile(
@@ -136,7 +135,6 @@ static __always_inline void print_regs(void)
 
 /////////the above is fake code////////////////
 
-
 static inline uint64_t my_rdmsr(uint32_t msr)
 {
 	uint32_t a, d;
@@ -225,7 +223,8 @@ bool getVmxOperation(void) {
 
     msr_ia32_vmx_basic = my_rdmsr(MSR_IA32_VMX_BASIC);
 	revision_identifier = msr_ia32_vmx_basic; //appendix A.1
-	printk(KERN_INFO "msr vmx basic register %llx\n", msr_ia32_vmx_basic);//TODO region size not correct appendix A.1
+	MYPAGE_SIZE  = (msr_ia32_vmx_basic >> 32 & 0x1FFF);
+	printk(KERN_INFO "Get page size [%d] from msr_ia32_vmx_basic.\n", MYPAGE_SIZE);
 
 	// allocating 4kib((4096 bytes) of memory for vmxon region
 	g_vmxonRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global

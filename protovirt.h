@@ -4,7 +4,7 @@
 uint64_t *g_vmxonRegion = NULL;
 //vmcs region
 uint64_t *g_vmcsRegion = NULL;
-
+uint32_t MYPAGE_SIZE = 0;
 
 struct desc64 {
 	uint16_t limit0;
