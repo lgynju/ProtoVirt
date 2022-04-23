@@ -19,7 +19,7 @@
 #include <linux/slab.h>
 #include <asm/asm.h>
 #include <asm/errno.h>
-#include "macro.h"
+//#include "macro.h"
 #include "protovirt.h"
 
 
@@ -308,9 +308,9 @@ bool initVmcsControlField(void) {
 	*/
 
 	// writing the value to control field
-	vmwrite(PIN_BASED_VM_EXEC_CONTROLS, pinbased_control_final);
-	vmwrite(PROC_BASED_VM_EXEC_CONTROLS, procbased_control_final);
-	vmwrite(PROC2_BASED_VM_EXEC_CONTROLS, procbased_secondary_control_final);
+	vmwrite(PIN_BASED_VM_EXEC_CONTROL, pinbased_control_final);
+	vmwrite(CPU_BASED_VM_EXEC_CONTROL, procbased_control_final);
+	vmwrite(SECONDARY_VM_EXEC_CONTROL, procbased_secondary_control_final);
 	vmwrite(VM_EXIT_CONTROLS, vm_exit_control_final);
 	vmwrite(VM_ENTRY_CONTROLS, vm_entry_control_final);
 	// to ignore the guest exception
