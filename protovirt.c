@@ -263,9 +263,143 @@ bool vmcsOperations(void) {
 	return true;
 }
 
+#define VM_EXIT_SAVE_DEBUG_CONTROLS		0x00000004
+#define VM_EXIT_HOST_ADDR_SPACE_SIZE		0x00000200
+#define VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL	0x00001000
+#define VM_EXIT_ACK_INTR_ON_EXIT		0x00008000
+#define VM_EXIT_SAVE_IA32_PAT			0x00040000
+#define VM_EXIT_LOAD_IA32_PAT			0x00080000
+#define VM_EXIT_SAVE_IA32_EFER			0x00100000
+#define VM_EXIT_LOAD_IA32_EFER			0x00200000
+#define VM_EXIT_SAVE_VMX_PREEMPTION_TIMER	0x00400000
+
+/*
+ * Initialize the host state fields based on the current host state, with
+ * the exception of HOST_RSP and HOST_RIP, which should be set by vmlaunch
+ * or vmresume.
+ */
+static inline void init_vmcs_host_state(void)
+{
+	uint32_t exit_controls = vmreadz(VM_EXIT_CONTROLS);
+
+	vmwrite(HOST_ES_SELECTOR, get_es1());
+	vmwrite(HOST_CS_SELECTOR, get_cs1());
+	vmwrite(HOST_SS_SELECTOR, get_ss1());
+	vmwrite(HOST_DS_SELECTOR, get_ds1());
+	vmwrite(HOST_FS_SELECTOR, get_fs1());
+	vmwrite(HOST_GS_SELECTOR, get_gs1());
+	vmwrite(HOST_TR_SELECTOR, get_tr1());
+
+	if (exit_controls & VM_EXIT_LOAD_IA32_PAT)
+		vmwrite(HOST_IA32_PAT, my_rdmsr(MSR_IA32_CR_PAT));
+	if (exit_controls & VM_EXIT_LOAD_IA32_EFER)
+		vmwrite(HOST_IA32_EFER, my_rdmsr(MSR_EFER));
+	if (exit_controls & VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL)
+		vmwrite(HOST_IA32_PERF_GLOBAL_CTRL,
+			my_rdmsr(MSR_CORE_PERF_GLOBAL_CTRL));
+
+	vmwrite(HOST_IA32_SYSENTER_CS, my_rdmsr(MSR_IA32_SYSENTER_CS));
+
+	vmwrite(HOST_CR0, get_cr0());
+	vmwrite(HOST_CR3, get_cr3());
+	vmwrite(HOST_CR4, get_cr4());
+	vmwrite(HOST_FS_BASE, my_rdmsr(MSR_FS_BASE));
+	vmwrite(HOST_GS_BASE, my_rdmsr(MSR_GS_BASE));
+	vmwrite(HOST_TR_BASE,
+		get_desc64_base((struct desc64 *)(get_gdt_base1() + get_tr1())));
+	vmwrite(HOST_GDTR_BASE, get_gdt_base1());
+	vmwrite(HOST_IDTR_BASE, get_idt_base1());
+	vmwrite(HOST_IA32_SYSENTER_ESP, my_rdmsr(MSR_IA32_SYSENTER_ESP));
+	vmwrite(HOST_IA32_SYSENTER_EIP, my_rdmsr(MSR_IA32_SYSENTER_EIP));
+}
+
+
+/*
+ * Initialize the guest state fields essentially as a clone of
+ * the host state fields. Some host state fields have fixed
+ * values, and we set the corresponding guest state fields accordingly.
+ */
+static inline void init_vmcs_guest_state(void *rip, void *rsp)
+{
+	vmwrite(GUEST_ES_SELECTOR, vmreadz(HOST_ES_SELECTOR));
+	vmwrite(GUEST_CS_SELECTOR, vmreadz(HOST_CS_SELECTOR));
+	vmwrite(GUEST_SS_SELECTOR, vmreadz(HOST_SS_SELECTOR));
+	vmwrite(GUEST_DS_SELECTOR, vmreadz(HOST_DS_SELECTOR));
+	vmwrite(GUEST_FS_SELECTOR, vmreadz(HOST_FS_SELECTOR));
+	vmwrite(GUEST_GS_SELECTOR, vmreadz(HOST_GS_SELECTOR));
+	vmwrite(GUEST_LDTR_SELECTOR, 0);
+	vmwrite(GUEST_TR_SELECTOR, vmreadz(HOST_TR_SELECTOR));
+	vmwrite(GUEST_INTR_STATUS, 0);
+	vmwrite(GUEST_PML_INDEX, 0);
+
+	vmwrite(VMCS_LINK_POINTER, -1ll);
+	vmwrite(GUEST_IA32_DEBUGCTL, 0);
+	vmwrite(GUEST_IA32_PAT, vmreadz(HOST_IA32_PAT));
+	vmwrite(GUEST_IA32_EFER, vmreadz(HOST_IA32_EFER));
+	vmwrite(GUEST_IA32_PERF_GLOBAL_CTRL,
+		vmreadz(HOST_IA32_PERF_GLOBAL_CTRL));
+
+	vmwrite(GUEST_ES_LIMIT, -1);
+	vmwrite(GUEST_CS_LIMIT, -1);
+	vmwrite(GUEST_SS_LIMIT, -1);
+	vmwrite(GUEST_DS_LIMIT, -1);
+	vmwrite(GUEST_FS_LIMIT, -1);
+	vmwrite(GUEST_GS_LIMIT, -1);
+	vmwrite(GUEST_LDTR_LIMIT, -1);
+	vmwrite(GUEST_TR_LIMIT, 0x67);
+	vmwrite(GUEST_GDTR_LIMIT, 0xffff);
+	vmwrite(GUEST_IDTR_LIMIT, 0xffff);
+	vmwrite(GUEST_ES_AR_BYTES,
+		vmreadz(GUEST_ES_SELECTOR) == 0 ? 0x10000 : 0xc093);
+	vmwrite(GUEST_CS_AR_BYTES, 0xa09b);
+	vmwrite(GUEST_SS_AR_BYTES, 0xc093);
+	vmwrite(GUEST_DS_AR_BYTES,
+		vmreadz(GUEST_DS_SELECTOR) == 0 ? 0x10000 : 0xc093);
+	vmwrite(GUEST_FS_AR_BYTES,
+		vmreadz(GUEST_FS_SELECTOR) == 0 ? 0x10000 : 0xc093);
+	vmwrite(GUEST_GS_AR_BYTES,
+		vmreadz(GUEST_GS_SELECTOR) == 0 ? 0x10000 : 0xc093);
+	vmwrite(GUEST_LDTR_AR_BYTES, 0x10000);
+	vmwrite(GUEST_TR_AR_BYTES, 0x8b);
+	vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
+	vmwrite(GUEST_ACTIVITY_STATE, 0);
+	vmwrite(GUEST_SYSENTER_CS, vmreadz(HOST_IA32_SYSENTER_CS));
+	vmwrite(VMX_PREEMPTION_TIMER_VALUE, 0);
+
+	vmwrite(GUEST_CR0, vmreadz(HOST_CR0));
+	vmwrite(GUEST_CR3, vmreadz(HOST_CR3));
+	vmwrite(GUEST_CR4, vmreadz(HOST_CR4));
+	vmwrite(GUEST_ES_BASE, 0);
+	vmwrite(GUEST_CS_BASE, 0);
+	vmwrite(GUEST_SS_BASE, 0);
+	vmwrite(GUEST_DS_BASE, 0);
+	vmwrite(GUEST_FS_BASE, vmreadz(HOST_FS_BASE));
+	vmwrite(GUEST_GS_BASE, vmreadz(HOST_GS_BASE));
+	vmwrite(GUEST_LDTR_BASE, 0);
+	vmwrite(GUEST_TR_BASE, vmreadz(HOST_TR_BASE));
+	vmwrite(GUEST_GDTR_BASE, vmreadz(HOST_GDTR_BASE));
+	vmwrite(GUEST_IDTR_BASE, vmreadz(HOST_IDTR_BASE));
+	vmwrite(GUEST_DR7, 0x400);
+	vmwrite(GUEST_RSP, (uint64_t)rsp);
+	vmwrite(GUEST_RIP, (uint64_t)rip);
+	vmwrite(GUEST_RFLAGS, 2);
+	vmwrite(GUEST_PENDING_DBG_EXCEPTIONS, 0);
+	vmwrite(GUEST_SYSENTER_ESP, vmreadz(HOST_IA32_SYSENTER_ESP));
+	vmwrite(GUEST_SYSENTER_EIP, vmreadz(HOST_IA32_SYSENTER_EIP));
+}
+
+
 // CH 26.2.1, Vol 3
 // Initializing VMCS control field
 bool initVmcsControlField(void) {
+	/*
+	There are some areas and fields in the VMCS.
+	Guest-State:
+	Host-State area:
+	Control fields: entry, execution, exit.
+	information field:
+	
+	*/
 	// checking of any of the default1 controls may be 0:
 	//not doing it for now.
 
@@ -325,104 +459,11 @@ bool initVmcsControlField(void) {
 		VM_ENTRY_IA32E_MODE);
 
 
-	// CH 26.2.2, Vol 3
+	//HOST AREA CH24.6, CH26.2.2, Vol 3
+	// The following settting is for VM exit recovery.
 	// Checks on Host Control Registers and MSRs
-	vmwrite(HOST_CR0, get_cr0());
-	vmwrite(HOST_CR3, get_cr3());
-	vmwrite(HOST_CR4, get_cr4());
-
-	//setting host selectors fields
-	vmwrite(HOST_ES_SELECTOR, get_es1());
-	vmwrite(HOST_CS_SELECTOR, get_cs1());
-	vmwrite(HOST_SS_SELECTOR, get_ss1());
-	vmwrite(HOST_DS_SELECTOR, get_ds1());
-	vmwrite(HOST_FS_SELECTOR, get_fs1());
-	vmwrite(HOST_GS_SELECTOR, get_gs1());
-	vmwrite(HOST_TR_SELECTOR, get_tr1());
-	vmwrite(HOST_FS_BASE, my_rdmsr(MSR_FS_BASE));
-	vmwrite(HOST_GS_BASE, my_rdmsr(MSR_GS_BASE));
-	vmwrite(HOST_TR_BASE, get_desc64_base((struct desc64 *)(get_gdt_base1() + get_tr1())));
-	vmwrite(HOST_GDTR_BASE, get_gdt_base1());
-	vmwrite(HOST_IDTR_BASE, get_idt_base1());
-	vmwrite(HOST_IA32_SYSENTER_ESP, my_rdmsr(MSR_IA32_SYSENTER_ESP));
-	vmwrite(HOST_IA32_SYSENTER_EIP, my_rdmsr(MSR_IA32_SYSENTER_EIP));
-	vmwrite(HOST_IA32_SYSENTER_CS, my_rdmsr(MSR_IA32_SYSENTER_CS));
-
-
-
-	// CH 26.3, Vol 3
-	// setting the guest control area
-	vmwrite(GUEST_ES_SELECTOR, vmreadz(HOST_ES_SELECTOR));
-	vmwrite(GUEST_CS_SELECTOR, vmreadz(HOST_CS_SELECTOR));
-	vmwrite(GUEST_SS_SELECTOR, vmreadz(HOST_SS_SELECTOR));
-	vmwrite(GUEST_DS_SELECTOR, vmreadz(HOST_DS_SELECTOR));
-	vmwrite(GUEST_FS_SELECTOR, vmreadz(HOST_FS_SELECTOR));
-	vmwrite(GUEST_GS_SELECTOR, vmreadz(HOST_GS_SELECTOR));
-	vmwrite(GUEST_LDTR_SELECTOR, 0);
-	vmwrite(GUEST_TR_SELECTOR, vmreadz(HOST_TR_SELECTOR));
-	vmwrite(GUEST_INTR_STATUS, 0);
-	vmwrite(GUEST_PML_INDEX, 0);
-
-	vmwrite(VMCS_LINK_POINTER, -1ll);
-	vmwrite(GUEST_IA32_DEBUGCTL, 0);
-	vmwrite(GUEST_IA32_PAT, vmreadz(HOST_IA32_PAT));
-	vmwrite(GUEST_IA32_EFER, vmreadz(HOST_IA32_EFER));
-	vmwrite(GUEST_IA32_PERF_GLOBAL_CTRL,
-		vmreadz(HOST_IA32_PERF_GLOBAL_CTRL));
-
-	vmwrite(GUEST_ES_LIMIT, -1);
-	vmwrite(GUEST_CS_LIMIT, -1);
-	vmwrite(GUEST_SS_LIMIT, -1);
-	vmwrite(GUEST_DS_LIMIT, -1);
-	vmwrite(GUEST_FS_LIMIT, -1);
-	vmwrite(GUEST_GS_LIMIT, -1);
-	vmwrite(GUEST_LDTR_LIMIT, -1);
-	vmwrite(GUEST_TR_LIMIT, 0x67);
-	vmwrite(GUEST_GDTR_LIMIT, 0xffff);
-	vmwrite(GUEST_IDTR_LIMIT, 0xffff);
-	vmwrite(GUEST_ES_AR_BYTES,
-		vmreadz(GUEST_ES_SELECTOR) == 0 ? 0x10000 : 0xc093);
-	vmwrite(GUEST_CS_AR_BYTES, 0xa09b);
-	vmwrite(GUEST_SS_AR_BYTES, 0xc093);
-	vmwrite(GUEST_DS_AR_BYTES,
-		vmreadz(GUEST_DS_SELECTOR) == 0 ? 0x10000 : 0xc093);
-	vmwrite(GUEST_FS_AR_BYTES,
-		vmreadz(GUEST_FS_SELECTOR) == 0 ? 0x10000 : 0xc093);
-	vmwrite(GUEST_GS_AR_BYTES,
-		vmreadz(GUEST_GS_SELECTOR) == 0 ? 0x10000 : 0xc093);
-	vmwrite(GUEST_LDTR_AR_BYTES, 0x10000);
-	vmwrite(GUEST_TR_AR_BYTES, 0x8b);
-	vmwrite(GUEST_INTERRUPTIBILITY_INFO, 0);
-	vmwrite(GUEST_ACTIVITY_STATE, 0);
-	vmwrite(GUEST_SYSENTER_CS, vmreadz(HOST_IA32_SYSENTER_CS));
-	vmwrite(VMX_PREEMPTION_TIMER_VALUE, 0);
-
-	vmwrite(GUEST_CR0, vmreadz(HOST_CR0));
-	vmwrite(GUEST_CR3, vmreadz(HOST_CR3));
-	vmwrite(GUEST_CR4, vmreadz(HOST_CR4));
-	vmwrite(GUEST_ES_BASE, 0);
-	vmwrite(GUEST_CS_BASE, 0);
-	vmwrite(GUEST_SS_BASE, 0);
-	vmwrite(GUEST_DS_BASE, 0);
-	vmwrite(GUEST_FS_BASE, vmreadz(HOST_FS_BASE));
-	vmwrite(GUEST_GS_BASE, vmreadz(HOST_GS_BASE));
-	vmwrite(GUEST_LDTR_BASE, 0);
-	vmwrite(GUEST_TR_BASE, vmreadz(HOST_TR_BASE));
-	vmwrite(GUEST_GDTR_BASE, vmreadz(HOST_GDTR_BASE));
-	vmwrite(GUEST_IDTR_BASE, vmreadz(HOST_IDTR_BASE));
-	vmwrite(GUEST_RFLAGS, 2);
-	vmwrite(GUEST_SYSENTER_ESP, vmreadz(HOST_IA32_SYSENTER_ESP));
-	vmwrite(GUEST_SYSENTER_EIP, vmreadz(HOST_IA32_SYSENTER_EIP));
-	// setting up rip and rsp for guest
-	void *costum_rip;
-	void *costum_rsp;
-
-	unsigned long guest_stack[GUEST_STACK_SIZE];
-	costum_rsp = &guest_stack[GUEST_STACK_SIZE];
-	costum_rip = guest_code;
-	vmwrite(GUEST_RSP, (uint64_t)costum_rsp);
-	vmwrite(GUEST_RIP, (uint64_t)costum_rip);
-
+	init_vmcs_host_state();
+	init_vmcs_guest_state(NULL, NULL);  //TODO need to change here.
 	return true;
 }
 
