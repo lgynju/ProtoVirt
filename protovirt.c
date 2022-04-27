@@ -136,31 +136,6 @@ static __always_inline void print_regs(void)
 
 /////////the above is fake code////////////////
 
-static inline uint64_t my_rdmsr(uint32_t msr)
-{
-	uint32_t a, d;
-
-	__asm__ __volatile__("rdmsr" : "=a"(a), "=d"(d) : "c"(msr) : "memory");
-
-	return a | ((uint64_t) d << 32);
-}
-
-static inline void my_wrmsr(uint32_t msr, uint64_t value)
-{
-	uint32_t a = value;
-	uint32_t d = value >> 32;
-
-	__asm__ __volatile__("wrmsr" :: "a"(a), "d"(d), "c"(msr) : "memory");
-}
-
-// guest vm stack size
-#define GUEST_STACK_SIZE 				64
-// code that will be run by guest
-static void guest_code(void)
-{
-    asm volatile("cpuid");
-
-}
 
 // CH 23.6, Vol 3
 // Checking the support of VMX
@@ -196,13 +171,13 @@ bool getVmxOperation(void) {
 	 *  Bit 2: Enables VMXON outside of SMX operation. If clear, VMXON
 	 *    outside of SMX causes a #GP.
 	 */
-	feature_control = my_rdmsr(MSR_IA32_FEATURE_CONTROL);
+	feature_control = __rdmsr(MSR_IA32_FEATURE_CONTROL);
 	required = FEATURE_CONTROL_LOCKED; //this bit must be set before execute vmxon, and msr cannot be write after set.
 	required |= FEATURE_CONTROL_VMXON_ENABLED_OUTSIDE_SMX;
 	required |= FEATURE_CONTROL_VMXON_ENABLED_INSIDE_SMX; //SMX feature, just enable it.maybe useful
 	if ((feature_control & required) != required) {
 		printk(KERN_INFO "write MSR_IA32_FEATURE_CONTROL register\n");
-		my_wrmsr(MSR_IA32_FEATURE_CONTROL, feature_control | required); //this is a 64bit register
+		__wrmsr(MSR_IA32_FEATURE_CONTROL, feature_control | required,0); //this is a 64bit register
 	}
 
 	/* In 23.8 chapter, more details in A.7 and A.8, for no reason, just like a game.
@@ -211,18 +186,18 @@ bool getVmxOperation(void) {
 	 * - Bit X is 0 in _FIXED1: bit X is fixed to 0 in CRx.
 	 */
 	__asm__ __volatile__("mov %%cr0, %0" : "=r"(cr0) : : "memory");
-	cr0 &= my_rdmsr(MSR_IA32_VMX_CR0_FIXED1);
-	cr0 |= my_rdmsr(MSR_IA32_VMX_CR0_FIXED0);
+	cr0 &= __rdmsr(MSR_IA32_VMX_CR0_FIXED1);
+	cr0 |= __rdmsr(MSR_IA32_VMX_CR0_FIXED0);
 	__asm__ __volatile__("mov %0, %%cr0" : : "r"(cr0) : "memory");
 
 	__asm__ __volatile__("mov %%cr4, %0" : "=r"(cr4) : : "memory");
-	cr4 &= my_rdmsr(MSR_IA32_VMX_CR4_FIXED1);
-	cr4 |= my_rdmsr(MSR_IA32_VMX_CR4_FIXED0);
+	cr4 &= __rdmsr(MSR_IA32_VMX_CR4_FIXED1);
+	cr4 |= __rdmsr(MSR_IA32_VMX_CR4_FIXED0);
 	cr4 |= X86_CR4_VMXE;  // setting CR4.VMXE[bit 13] = 1,
 	__asm__ __volatile__("mov %0, %%cr4" : : "r"(cr4) : "memory");
 
 
-    msr_ia32_vmx_basic = my_rdmsr(MSR_IA32_VMX_BASIC);
+    msr_ia32_vmx_basic = __rdmsr(MSR_IA32_VMX_BASIC);
 	revision_identifier = msr_ia32_vmx_basic; //appendix A.1
 	MYPAGE_SIZE  = (msr_ia32_vmx_basic >> 32 & 0x1FFF);
 	printk(KERN_INFO "Get page size [%d] from msr_ia32_vmx_basic.\n", MYPAGE_SIZE);
@@ -242,14 +217,13 @@ bool getVmxOperation(void) {
 	return true;
 }
 
-
 // CH 24.2, Vol 3
 // allocating VMCS region
 bool vmcsOperations(void) {
 	long int vmcsPhyRegion = 0;
 	if (allocVmcsRegion()){
 		vmcsPhyRegion = __pa(g_vmcsRegion);
-		*(uint32_t *)g_vmcsRegion = my_rdmsr(MSR_IA32_VMX_BASIC);
+		*(uint32_t *)g_vmcsRegion = __rdmsr(MSR_IA32_VMX_BASIC);
 	}
 	else {
 		return false;
@@ -272,21 +246,21 @@ static inline void init_vmcs_control_fields(void)
 	vmwrite(VIRTUAL_PROCESSOR_ID, 0);
 	vmwrite(POSTED_INTR_NV, 0);
 
-	vmwrite(PIN_BASED_VM_EXEC_CONTROL, my_rdmsr(MSR_IA32_VMX_TRUE_PINBASED_CTLS));
+	vmwrite(PIN_BASED_VM_EXEC_CONTROL, __rdmsr(MSR_IA32_VMX_TRUE_PINBASED_CTLS));
 	if (!vmwrite(SECONDARY_VM_EXEC_CONTROL, 0))
 		vmwrite(CPU_BASED_VM_EXEC_CONTROL,
-			my_rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS) | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS);
+			__rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS) | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS);
 	else
-		vmwrite(CPU_BASED_VM_EXEC_CONTROL, my_rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS));
+		vmwrite(CPU_BASED_VM_EXEC_CONTROL, __rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS));
 	vmwrite(EXCEPTION_BITMAP, 0);
 	vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
 	vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, -1); /* Never match */
 	vmwrite(CR3_TARGET_COUNT, 0);
-	vmwrite(VM_EXIT_CONTROLS, my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
+	vmwrite(VM_EXIT_CONTROLS, __rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
 		VM_EXIT_HOST_ADDR_SPACE_SIZE);	  /* 64-bit host */
 	vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
 	vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
-	vmwrite(VM_ENTRY_CONTROLS, my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
+	vmwrite(VM_ENTRY_CONTROLS, __rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
 		VM_ENTRY_IA32E_MODE);		  /* 64-bit guest */
 	vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
 	vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
@@ -320,26 +294,26 @@ static inline void init_vmcs_host_state(void)
 	vmwrite(HOST_TR_SELECTOR, get_tr1());
 
 	if (exit_controls & VM_EXIT_LOAD_IA32_PAT)
-		vmwrite(HOST_IA32_PAT, my_rdmsr(MSR_IA32_CR_PAT));
+		vmwrite(HOST_IA32_PAT, __rdmsr(MSR_IA32_CR_PAT));
 	if (exit_controls & VM_EXIT_LOAD_IA32_EFER)
-		vmwrite(HOST_IA32_EFER, my_rdmsr(MSR_EFER));
+		vmwrite(HOST_IA32_EFER, __rdmsr(MSR_EFER));
 	if (exit_controls & VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL)
 		vmwrite(HOST_IA32_PERF_GLOBAL_CTRL,
-			my_rdmsr(MSR_CORE_PERF_GLOBAL_CTRL));
+			__rdmsr(MSR_CORE_PERF_GLOBAL_CTRL));
 
-	vmwrite(HOST_IA32_SYSENTER_CS, my_rdmsr(MSR_IA32_SYSENTER_CS));
+	vmwrite(HOST_IA32_SYSENTER_CS, __rdmsr(MSR_IA32_SYSENTER_CS));
 
 	vmwrite(HOST_CR0, get_cr0());
 	vmwrite(HOST_CR3, get_cr3());
 	vmwrite(HOST_CR4, get_cr4());
-	vmwrite(HOST_FS_BASE, my_rdmsr(MSR_FS_BASE));
-	vmwrite(HOST_GS_BASE, my_rdmsr(MSR_GS_BASE));
+	vmwrite(HOST_FS_BASE, __rdmsr(MSR_FS_BASE));
+	vmwrite(HOST_GS_BASE, __rdmsr(MSR_GS_BASE));
 	vmwrite(HOST_TR_BASE,
 		get_desc64_base((struct desc64 *)(get_gdt_base1() + get_tr1())));
 	vmwrite(HOST_GDTR_BASE, get_gdt_base1());
 	vmwrite(HOST_IDTR_BASE, get_idt_base1());
-	vmwrite(HOST_IA32_SYSENTER_ESP, my_rdmsr(MSR_IA32_SYSENTER_ESP));
-	vmwrite(HOST_IA32_SYSENTER_EIP, my_rdmsr(MSR_IA32_SYSENTER_EIP));
+	vmwrite(HOST_IA32_SYSENTER_ESP, __rdmsr(MSR_IA32_SYSENTER_ESP));
+	vmwrite(HOST_IA32_SYSENTER_EIP, __rdmsr(MSR_IA32_SYSENTER_EIP));
 }
 
 /*
@@ -435,16 +409,16 @@ bool initVmcsControlField(void) {
 	// setting pin based controls, proc based controls, vm exit controls
 	// and vm entry controls
 
-	uint32_t pinbased_control0 = my_rdmsr(MSR_IA32_VMX_PINBASED_CTLS);
-	uint32_t pinbased_control1 = my_rdmsr(MSR_IA32_VMX_PINBASED_CTLS) >> 32;
-	uint32_t procbased_control0 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS);
-	uint32_t procbased_control1 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS) >> 32;
-	uint32_t procbased_secondary_control0 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2);
-	uint32_t procbased_secondary_control1 = my_rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2) >> 32;
-	uint32_t vm_exit_control0 = my_rdmsr(MSR_IA32_VMX_EXIT_CTLS);
-	uint32_t vm_exit_control1 = my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) >> 32;
-	uint32_t vm_entry_control0 = my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS);
-	uint32_t vm_entry_control1 = my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) >> 32;
+	uint32_t pinbased_control0 = __rdmsr(MSR_IA32_VMX_PINBASED_CTLS);
+	uint32_t pinbased_control1 = __rdmsr(MSR_IA32_VMX_PINBASED_CTLS) >> 32;
+	uint32_t procbased_control0 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS);
+	uint32_t procbased_control1 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS) >> 32;
+	uint32_t procbased_secondary_control0 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2);
+	uint32_t procbased_secondary_control1 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2) >> 32;
+	uint32_t vm_exit_control0 = __rdmsr(MSR_IA32_VMX_EXIT_CTLS);
+	uint32_t vm_exit_control1 = __rdmsr(MSR_IA32_VMX_EXIT_CTLS) >> 32;
+	uint32_t vm_entry_control0 = __rdmsr(MSR_IA32_VMX_ENTRY_CTLS);
+	uint32_t vm_entry_control1 = __rdmsr(MSR_IA32_VMX_ENTRY_CTLS) >> 32;
 
     // I am not sure why the & is here?
 	// setting final value to write to control fields
@@ -481,9 +455,9 @@ bool initVmcsControlField(void) {
 
 	vmwrite(VIRTUAL_PROCESSOR_ID, 0);
 
-	vmwrite(VM_EXIT_CONTROLS, my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
+	vmwrite(VM_EXIT_CONTROLS, __rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
 		VM_EXIT_HOST_ADDR_SPACE_SIZE);
-	vmwrite(VM_ENTRY_CONTROLS, my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
+	vmwrite(VM_ENTRY_CONTROLS, __rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
 		VM_ENTRY_IA32E_MODE);
 
 

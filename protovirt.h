@@ -14,18 +14,6 @@ struct desc64 {
 } __attribute__((packed));
 
 
-static inline unsigned long long notrace __rdmsr1(unsigned int msr)
-{
-	DECLARE_ARGS(val, low, high);
-
-	asm volatile("1: rdmsr\n"
-		     "2:\n"
-		     _ASM_EXTABLE_HANDLE(1b, 2b, ex_handler_rdmsr_unsafe)
-		     : EAX_EDX_RET(val, low, high) : "c" (msr));
-
-	return EAX_EDX_VAL(val, low, high);
-}
-
 // CH 30.3, Vol 3
 // VMXON instruction - Enter VMX operation
 static inline int _vmxon(uint64_t phys)
