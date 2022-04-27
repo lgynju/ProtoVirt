@@ -18,8 +18,9 @@
 #include <linux/gfp.h>
 #include <linux/slab.h>
 #include <asm/asm.h>
+#include <asm/vmx.h>
+#include <asm/msr-index.h>
 #include <asm/errno.h>
-//#include "macro.h"
 #include "protovirt.h"
 
 
@@ -263,15 +264,43 @@ bool vmcsOperations(void) {
 	return true;
 }
 
-#define VM_EXIT_SAVE_DEBUG_CONTROLS		0x00000004
-#define VM_EXIT_HOST_ADDR_SPACE_SIZE		0x00000200
-#define VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL	0x00001000
-#define VM_EXIT_ACK_INTR_ON_EXIT		0x00008000
-#define VM_EXIT_SAVE_IA32_PAT			0x00040000
-#define VM_EXIT_LOAD_IA32_PAT			0x00080000
-#define VM_EXIT_SAVE_IA32_EFER			0x00100000
-#define VM_EXIT_LOAD_IA32_EFER			0x00200000
-#define VM_EXIT_SAVE_VMX_PREEMPTION_TIMER	0x00400000
+/*
+ * Initialize the control fields to the most basic settings possible.
+ */
+static inline void init_vmcs_control_fields(void)
+{
+	vmwrite(VIRTUAL_PROCESSOR_ID, 0);
+	vmwrite(POSTED_INTR_NV, 0);
+
+	vmwrite(PIN_BASED_VM_EXEC_CONTROL, my_rdmsr(MSR_IA32_VMX_TRUE_PINBASED_CTLS));
+	if (!vmwrite(SECONDARY_VM_EXEC_CONTROL, 0))
+		vmwrite(CPU_BASED_VM_EXEC_CONTROL,
+			my_rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS) | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS);
+	else
+		vmwrite(CPU_BASED_VM_EXEC_CONTROL, my_rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS));
+	vmwrite(EXCEPTION_BITMAP, 0);
+	vmwrite(PAGE_FAULT_ERROR_CODE_MASK, 0);
+	vmwrite(PAGE_FAULT_ERROR_CODE_MATCH, -1); /* Never match */
+	vmwrite(CR3_TARGET_COUNT, 0);
+	vmwrite(VM_EXIT_CONTROLS, my_rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
+		VM_EXIT_HOST_ADDR_SPACE_SIZE);	  /* 64-bit host */
+	vmwrite(VM_EXIT_MSR_STORE_COUNT, 0);
+	vmwrite(VM_EXIT_MSR_LOAD_COUNT, 0);
+	vmwrite(VM_ENTRY_CONTROLS, my_rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
+		VM_ENTRY_IA32E_MODE);		  /* 64-bit guest */
+	vmwrite(VM_ENTRY_MSR_LOAD_COUNT, 0);
+	vmwrite(VM_ENTRY_INTR_INFO_FIELD, 0);
+	vmwrite(TPR_THRESHOLD, 0);
+
+	vmwrite(CR0_GUEST_HOST_MASK, 0);
+	vmwrite(CR4_GUEST_HOST_MASK, 0);
+	vmwrite(CR0_READ_SHADOW, get_cr0());
+	vmwrite(CR4_READ_SHADOW, get_cr4());
+
+	// vmwrite(MSR_BITMAP, vmx->msr_gpa);
+	// vmwrite(VMREAD_BITMAP, vmx->vmread_gpa);
+	// vmwrite(VMWRITE_BITMAP, vmx->vmwrite_gpa);
+}
 
 /*
  * Initialize the host state fields based on the current host state, with
@@ -312,7 +341,6 @@ static inline void init_vmcs_host_state(void)
 	vmwrite(HOST_IA32_SYSENTER_ESP, my_rdmsr(MSR_IA32_SYSENTER_ESP));
 	vmwrite(HOST_IA32_SYSENTER_EIP, my_rdmsr(MSR_IA32_SYSENTER_EIP));
 }
-
 
 /*
  * Initialize the guest state fields essentially as a clone of
@@ -397,7 +425,7 @@ bool initVmcsControlField(void) {
 	Guest-State:
 	Host-State area:
 	Control fields: entry, execution, exit.
-	information field:
+	information field: // it seems optional
 	
 	*/
 	// checking of any of the default1 controls may be 0:
@@ -475,6 +503,7 @@ bool initVmLaunchProcess(void){
 	printk(KERN_INFO "VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
 	return true;
 }
+
 bool vmxoffOperation(void)
 {
 	if (deallocate_vmxon_region()) {

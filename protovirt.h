@@ -1,5 +1,3 @@
-#include "macro.h"
-
 // vmxon region
 uint64_t *g_vmxonRegion = NULL;
 //vmcs region
@@ -116,16 +114,7 @@ static inline int vmptrld(uint64_t vmcs_pa)
 	return ret;
 }
 
-// Ch A.2, Vol 3
-// indicate whether any of the default1 controls may be 0
-// if return 0, all the default1 controls are reserved and must be 1.
-// if return 1,not all the default1 controls are reserved, and
-// some (but not necessarily all) may be 0.
-unsigned long long default1_controls(void){
-	unsigned long long check_default1_controls = (unsigned long long)((__rdmsr1(MSR_IA32_VMX_BASIC) << 55) & 1);
-	//printk(KERN_INFO "default1 controls value!---%llu\n", check_default1_controls);
-	return check_default1_controls;
-}
+
 
 static inline uint64_t get_desc64_base(const struct desc64 *desc)
 {
