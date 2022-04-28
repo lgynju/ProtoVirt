@@ -84,9 +84,6 @@ static __always_inline void fake_vmlaunch(uint64_t guest_rsp, uint64_t guest_rip
 }
 
 
-
-
-
 static __always_inline void print_regs(void)
 {
 	uint64_t rax, rcx, rdx, rbx, rbp, rsp, rsi, rdi, r8, r9, r10, r11, r12, r13, r14, r15;
@@ -276,15 +273,12 @@ static inline void init_vmcs_control_fields(void)
 	// vmwrite(VMWRITE_BITMAP, vmx->vmwrite_gpa);
 }
 
-/*
- * Initialize the host state fields based on the current host state, with
- * the exception of HOST_RSP and HOST_RIP, which should be set by vmlaunch
- * or vmresume.
- */
+
 static inline void init_vmcs_host_state(void)
 {
 	uint32_t exit_controls = vmreadz(VM_EXIT_CONTROLS);
 
+	//HOST_RSP and HOST_RIP not set here, and it will be set in the vmlauch.
 	vmwrite(HOST_ES_SELECTOR, get_es1());
 	vmwrite(HOST_CS_SELECTOR, get_cs1());
 	vmwrite(HOST_SS_SELECTOR, get_ss1());
@@ -300,6 +294,7 @@ static inline void init_vmcs_host_state(void)
 	if (exit_controls & VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL)
 		vmwrite(HOST_IA32_PERF_GLOBAL_CTRL,
 			__rdmsr(MSR_CORE_PERF_GLOBAL_CTRL));
+   // S_CET,INTERRUPT_SSP_TABLE_ADDR,PKRS](vol 24.5) are NOT set here, but it doesn't mind, because it is optional.
 
 	vmwrite(HOST_IA32_SYSENTER_CS, __rdmsr(MSR_IA32_SYSENTER_CS));
 
@@ -395,10 +390,9 @@ static inline void init_vmcs_guest_state(void *rip, void *rsp)
 // Initializing VMCS control field
 bool initVmcsControlField(void) {
 	/*
-	There are some areas and fields in the VMCS.
-	Guest-State:
-	Host-State area:
-	Control fields: entry, execution, exit.
+	There are some areas and fields in the VMCS.(2+3+1)
+	area: host-state, guest-state
+	control fields: entry, execution, exit.
 	information field: // it seems optional
 	
 	*/
