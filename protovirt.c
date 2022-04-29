@@ -366,7 +366,7 @@ static inline void init_vmcs_guest_state(void *rip, void *rsp)
 	vmwrite(GUEST_CR0, vmreadz(HOST_CR0));
 	vmwrite(GUEST_CR3, vmreadz(HOST_CR3));
 	vmwrite(GUEST_CR4, vmreadz(HOST_CR4));
-	vmwrite(GUEST_ES_BASE, 0);
+	vmwrite(GUEST_ES_BASE, 0); //according to manual, it has only 32bit
 	vmwrite(GUEST_CS_BASE, 0);
 	vmwrite(GUEST_SS_BASE, 0);
 	vmwrite(GUEST_DS_BASE, 0);
