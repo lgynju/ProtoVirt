@@ -2,6 +2,7 @@
 uint64_t *g_vmxonRegion = NULL;
 //vmcs region
 uint64_t *g_vmcsRegion = NULL;
+uint64_t *g_vmStack = NULL;
 uint32_t MYPAGE_SIZE = 0;
 
 struct desc64 {

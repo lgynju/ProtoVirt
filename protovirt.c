@@ -1,26 +1,9 @@
-#include <linux/init.h>
 #include <linux/module.h>
-#include <linux/const.h>
-#include <linux/errno.h>
-#include <linux/fs.h>   /* Needed for KERN_INFO */
-#include <linux/types.h>
-#include <linux/errno.h>
-#include <linux/fcntl.h>
 #include <linux/init.h>
-#include <linux/poll.h>
-#include <linux/smp.h>
-#include <linux/major.h>
-#include <linux/fs.h>
-#include <linux/device.h>
-#include <linux/cpu.h>
-#include <linux/notifier.h>
-#include <linux/uaccess.h>
 #include <linux/gfp.h>
 #include <linux/slab.h>
-#include <asm/asm.h>
 #include <asm/vmx.h>
 #include <asm/msr-index.h>
-#include <asm/errno.h>
 #include "protovirt.h"
 
 
@@ -47,7 +30,6 @@ static __always_inline void save_volatile_regs(void)
 	);
 }
 
-
 static __always_inline void restore_volatile_regs(void)
 {
 	asm volatile(
@@ -70,19 +52,6 @@ static __always_inline void restore_volatile_regs(void)
 		:
 	);
 }
-
-
-static __always_inline void fake_vmlaunch(uint64_t guest_rsp, uint64_t guest_rip)
-{
-	asm volatile(
-		"mov %[guest_rsp], %%rsp\n"
-		"jump *%[guest_rip]\n"
-		:
-		: [guest_rsp] "m"(guest_rsp),
-		  [guest_rip] "m"(guest_rip)
-	);
-}
-
 
 static __always_inline void print_regs(void)
 {
@@ -130,15 +99,12 @@ static __always_inline void print_regs(void)
 	restore_volatile_regs();
 }
 
-
-/////////the above is fake code////////////////
-
+/////////the above is helper code////////////////
 
 // CH 23.6, Vol 3
 // Checking the support of VMX
 bool vmxSupport(void)
 {
-
     int getVmxSupport, vmxBit;
     __asm__("mov $1, %rax");
     __asm__("cpuid");
@@ -148,7 +114,6 @@ bool vmxSupport(void)
         return true;
     }
     return false;
-
 }
 
 // Enter in VMX mode
@@ -160,7 +125,6 @@ bool getVmxOperation(void) {
 	long int vmxon_phy_region = 0;
 	uint32_t revision_identifier;
 	uint64_t msr_ia32_vmx_basic;
-
 
     /*CH 23.7, Vol 3
 	 * Configure IA32_FEATURE_CONTROL MSR to allow VMXON:
@@ -193,12 +157,12 @@ bool getVmxOperation(void) {
 	cr4 |= X86_CR4_VMXE;  // setting CR4.VMXE[bit 13] = 1,
 	__asm__ __volatile__("mov %0, %%cr4" : : "r"(cr4) : "memory");
 
-
     msr_ia32_vmx_basic = __rdmsr(MSR_IA32_VMX_BASIC);
 	revision_identifier = msr_ia32_vmx_basic; //appendix A.1
 	MYPAGE_SIZE  = (msr_ia32_vmx_basic >> 32 & 0x1FFF);
-	printk(KERN_INFO "Get page size [%d] from msr_ia32_vmx_basic.\n", MYPAGE_SIZE);
-
+	if (MYPAGE_SIZE != 4096) {
+		printk(KERN_WARNING "Get page size [%d]!=4096 from msr_ia32_vmx_basic.\n", MYPAGE_SIZE);
+	}
 	// allocating 4kib((4096 bytes) of memory for vmxon region
 	g_vmxonRegion = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global
 	// Same with vmcs in terms of form, but not the same meaning.
@@ -244,6 +208,8 @@ static inline void init_vmcs_control_fields(void)
 	vmwrite(POSTED_INTR_NV, 0);
 
 	vmwrite(PIN_BASED_VM_EXEC_CONTROL, __rdmsr(MSR_IA32_VMX_TRUE_PINBASED_CTLS));
+    // the MSR was not set from the following code, so maybe the following readmsr bitmap may be not neccessary.
+	// printk(KERN_INFO "=====PROCBASED=====: 0x%016llX", __rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS)&CPU_BASED_USE_MSR_BITMAPS);
 	if (!vmwrite(SECONDARY_VM_EXEC_CONTROL, 0))
 		vmwrite(CPU_BASED_VM_EXEC_CONTROL,
 			__rdmsr(MSR_IA32_VMX_TRUE_PROCBASED_CTLS) | CPU_BASED_ACTIVATE_SECONDARY_CONTROLS);
@@ -269,10 +235,10 @@ static inline void init_vmcs_control_fields(void)
 	vmwrite(CR4_READ_SHADOW, get_cr4());
 
 	// vmwrite(MSR_BITMAP, vmx->msr_gpa);
+	// this is useful for shadow mode, so maybe it is not necessary here two.
 	// vmwrite(VMREAD_BITMAP, vmx->vmread_gpa);
 	// vmwrite(VMWRITE_BITMAP, vmx->vmwrite_gpa);
 }
-
 
 static inline void init_vmcs_host_state(void)
 {
@@ -294,7 +260,7 @@ static inline void init_vmcs_host_state(void)
 	if (exit_controls & VM_EXIT_LOAD_IA32_PERF_GLOBAL_CTRL)
 		vmwrite(HOST_IA32_PERF_GLOBAL_CTRL,
 			__rdmsr(MSR_CORE_PERF_GLOBAL_CTRL));
-   // S_CET,INTERRUPT_SSP_TABLE_ADDR,PKRS](vol 24.5) are NOT set here, but it doesn't mind, because it is optional.
+    // S_CET,INTERRUPT_SSP_TABLE_ADDR,PKRS](vol 24.5) are NOT set here, but it doesn't mind, because it is optional.
 
 	vmwrite(HOST_IA32_SYSENTER_CS, __rdmsr(MSR_IA32_SYSENTER_CS));
 
@@ -385,81 +351,25 @@ static inline void init_vmcs_guest_state(void *rip, void *rsp)
 	vmwrite(GUEST_SYSENTER_EIP, vmreadz(HOST_IA32_SYSENTER_EIP));
 }
 
+// code that will be run by guest
+static void guest_code(void)
+{
+	printk(KERN_INFO "Congratulate, Enter the virtual machine!\n");
+	print_regs();
+	asm volatile("cpuid");
+}
 
-// CH 26.2.1, Vol 3
-// Initializing VMCS control field
-bool initVmcsControlField(void) {
+bool initVmcs(void) {
+	g_vmStack = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
 	/*
 	There are some areas and fields in the VMCS.(2+3+1)
 	area: host-state, guest-state
 	control fields: entry, execution, exit.
 	information field: // it seems optional
-	
 	*/
-	// checking of any of the default1 controls may be 0:
-	//not doing it for now.
-
-	// CH A.3.1, Vol 3
-	// setting pin based controls, proc based controls, vm exit controls
-	// and vm entry controls
-
-	uint32_t pinbased_control0 = __rdmsr(MSR_IA32_VMX_PINBASED_CTLS);
-	uint32_t pinbased_control1 = __rdmsr(MSR_IA32_VMX_PINBASED_CTLS) >> 32;
-	uint32_t procbased_control0 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS);
-	uint32_t procbased_control1 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS) >> 32;
-	uint32_t procbased_secondary_control0 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2);
-	uint32_t procbased_secondary_control1 = __rdmsr(MSR_IA32_VMX_PROCBASED_CTLS2) >> 32;
-	uint32_t vm_exit_control0 = __rdmsr(MSR_IA32_VMX_EXIT_CTLS);
-	uint32_t vm_exit_control1 = __rdmsr(MSR_IA32_VMX_EXIT_CTLS) >> 32;
-	uint32_t vm_entry_control0 = __rdmsr(MSR_IA32_VMX_ENTRY_CTLS);
-	uint32_t vm_entry_control1 = __rdmsr(MSR_IA32_VMX_ENTRY_CTLS) >> 32;
-
-    // I am not sure why the & is here?
-	// setting final value to write to control fields
-	uint32_t pinbased_control_final = (pinbased_control0 & pinbased_control1);
-	uint32_t procbased_control_final = (procbased_control0 & procbased_control1);
-	uint32_t procbased_secondary_control_final = (procbased_secondary_control0 & procbased_secondary_control1);
-	uint32_t vm_exit_control_final = (vm_exit_control0 & vm_exit_control1);
-	uint32_t vm_entry_control_final = (vm_entry_control0 & vm_entry_control1);
-
-	/* CH 24.7.1, Vol 3
-	// for supporting 64 bit host
-	//uint32_t host_address_space = 1 << 9;
-	vm_exit_control_final = vm_exit_control_final | host_address_space;
-	*/
-	/* To enable secondary controls
-	// procbased_control_final = procbased_control_final | ACTIVATE_SECONDARY_CONTROLS;
-	*/
-	/* for enabling unrestricted guest mode
-	uint64_t unrestricted_guest = 1 << 7;
-	// for enabling ept
-	uint64_t enabling_ept = 1 << 1;
-	//uint32_t procbased_secondary_control_final = procbased_secondary_control_final | unrestricted_guest | enabling_ept;
-	*/
-
-	// writing the value to control field
-	vmwrite(PIN_BASED_VM_EXEC_CONTROL, pinbased_control_final);
-	vmwrite(CPU_BASED_VM_EXEC_CONTROL, procbased_control_final);
-	vmwrite(SECONDARY_VM_EXEC_CONTROL, procbased_secondary_control_final);
-	vmwrite(VM_EXIT_CONTROLS, vm_exit_control_final);
-	vmwrite(VM_ENTRY_CONTROLS, vm_entry_control_final);
-	// to ignore the guest exception
-	// maybe optional
-	vmwrite(EXCEPTION_BITMAP, 0);
-
-	vmwrite(VIRTUAL_PROCESSOR_ID, 0);
-
-	vmwrite(VM_EXIT_CONTROLS, __rdmsr(MSR_IA32_VMX_EXIT_CTLS) |
-		VM_EXIT_HOST_ADDR_SPACE_SIZE);
-	vmwrite(VM_ENTRY_CONTROLS, __rdmsr(MSR_IA32_VMX_ENTRY_CTLS) |
-		VM_ENTRY_IA32E_MODE);
-
-
-	//HOST AREA CH24.6, CH26.2.2, Vol 3
-	// The following settting is for VM exit recovery.
-	// Checks on Host Control Registers and MSRs
+	init_vmcs_control_fields();
 	init_vmcs_host_state();
-	init_vmcs_guest_state(NULL, NULL);  //TODO need to change here.
+	init_vmcs_guest_state(guest_code, g_vmStack);
 	return true;
 }
 
@@ -513,7 +423,7 @@ int __init start_init(void)
 	else {
 		printk(KERN_INFO "VMCS Allocation succeeded! CONTINUING");
 	}
-	if (!initVmcsControlField()) {
+	if (!initVmcs()) {
 		printk(KERN_INFO "Initialization of VMCS Control field failed! EXITING");
 		return 0;
 	}
