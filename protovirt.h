@@ -111,6 +111,7 @@ static inline uint64_t get_desc64_base(const struct desc64 *desc)
 		(desc->base0 | ((desc->base1) << 16) | ((desc->base2) << 24));
 }
 
+
 static inline int _vmlaunch(void)
 {
 	int ret;
@@ -140,6 +141,66 @@ static inline int _vmlaunch(void)
 	return ret;
 }
 
+
+static inline int vmlaunch2(uint64_t RSP, uint64_t RIP)
+{
+	int ret;
+
+	__asm__ __volatile__("push %%rbp;"
+			     "push %%rcx;"
+			     "push %%rdx;"
+			     "push %%rsi;"
+			     "push %%rdi;"
+			     "push $0;"
+			     "vmwrite %%rsp, %[host_rsp];"
+			     "lea 1f(%%rip), %%rax;"
+			     "vmwrite %%rax, %[host_rip];"
+			     "vmlaunch;"
+			     "incq (%%rsp);"
+			     "1: pop %%rax;"
+			     "pop %%rdi;"
+			     "pop %%rsi;"
+			     "pop %%rdx;"
+			     "pop %%rcx;"
+			     "pop %%rbp;"
+			     : [ret]"=&a"(ret)
+			     : [host_rsp]"r"((uint64_t)RSP),
+			       [host_rip]"r"((uint64_t)RIP)
+			     : "memory", "cc", "rbx", "r8", "r9", "r10",
+			       "r11", "r12", "r13", "r14", "r15");
+	return ret;
+}
+/*
+ * No guest state (e.g. GPRs) is established by this vmresume.
+ */
+static inline int vmresume(void)
+{
+	int ret;
+
+	__asm__ __volatile__("push %%rbp;"
+			     "push %%rcx;"
+			     "push %%rdx;"
+			     "push %%rsi;"
+			     "push %%rdi;"
+			     "push $0;"
+			     "vmwrite %%rsp, %[host_rsp];"
+			     "lea 1f(%%rip), %%rax;"
+			     "vmwrite %%rax, %[host_rip];"
+			     "vmresume;"
+			     "incq (%%rsp);"
+			     "1: pop %%rax;"
+			     "pop %%rdi;"
+			     "pop %%rsi;"
+			     "pop %%rdx;"
+			     "pop %%rcx;"
+			     "pop %%rbp;"
+			     : [ret]"=&a"(ret)
+			     : [host_rsp]"r"((uint64_t)HOST_RSP),
+			       [host_rip]"r"((uint64_t)HOST_RIP)
+			     : "memory", "cc", "rbx", "r8", "r9", "r10",
+			       "r11", "r12", "r13", "r14", "r15");
+	return ret;
+}
 
 static inline uint64_t get_cr0(void)
 {

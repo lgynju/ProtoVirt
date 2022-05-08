@@ -373,12 +373,28 @@ bool initVmcs(void) {
 	return true;
 }
 
+static void myhandler(void)
+{
+	save_volatile_regs();
+	printk(KERN_INFO "enter the handler..........\n");
+	restore_volatile_regs();
+}
+
 bool initVmLaunchProcess(void){
-	int vmlaunch_status = _vmlaunch();
+	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global
+	int vmlaunch_status = vmlaunch2(handler_rsp,myhandler);
 	if (vmlaunch_status != 0){
 		return false;
 	}
-	printk(KERN_INFO "VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
+	printk(KERN_INFO "1VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
+
+	vmlaunch_status = vmresume();
+	if (vmlaunch_status != 0){
+		return false;
+	}
+	printk(KERN_INFO "2VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
+
+	//vmresume();
 	return true;
 }
 
