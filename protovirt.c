@@ -356,7 +356,21 @@ static void guest_code(void)
 {
 	printk(KERN_INFO "Congratulate, Enter the virtual machine!\n");
 	print_regs();
+	printk(KERN_INFO "Ready to execute cpuid!\n");
 	asm volatile("cpuid");
+	printk(KERN_INFO "Resume the virtual machine!\n");
+	print_regs();
+}
+
+static __always_inline void myhandler(void)
+{
+ 	save_volatile_regs();
+ 	printk(KERN_INFO "enter the exit handler..........\n");
+	//here is the exit handler
+	printk(KERN_INFO "VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
+	restore_volatile_regs();
+	__asm__ __volatile__("vmresume");
+
 }
 
 bool initVmcs(void) {
@@ -373,28 +387,14 @@ bool initVmcs(void) {
 	return true;
 }
 
-static void myhandler(void)
-{
-	save_volatile_regs();
-	printk(KERN_INFO "enter the handler..........\n");
-	restore_volatile_regs();
-}
 
 bool initVmLaunchProcess(void){
 	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global
-	int vmlaunch_status = vmlaunch2(handler_rsp,myhandler);
+	//int vmlaunch_status = _vmlaunch();
+	int vmlaunch_status = vmlaunch2(handler_rsp,(unsigned long)&myhandler);
 	if (vmlaunch_status != 0){
 		return false;
 	}
-	printk(KERN_INFO "1VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
-
-	vmlaunch_status = vmresume();
-	if (vmlaunch_status != 0){
-		return false;
-	}
-	printk(KERN_INFO "2VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
-
-	//vmresume();
 	return true;
 }
 

@@ -152,9 +152,9 @@ static inline int vmlaunch2(uint64_t RSP, uint64_t RIP)
 			     "push %%rsi;"
 			     "push %%rdi;"
 			     "push $0;"
-			     "vmwrite %%rsp, %[host_rsp];"
-			     "lea 1f(%%rip), %%rax;"
-			     "vmwrite %%rax, %[host_rip];"
+			     "vmwrite %[RSP], %[host_rsp];"
+			     //"lea 1f(%%rip), %%rax;"
+			     "vmwrite %[RIP], %[host_rip];"
 			     "vmlaunch;"
 			     "incq (%%rsp);"
 			     "1: pop %%rax;"
@@ -164,8 +164,10 @@ static inline int vmlaunch2(uint64_t RSP, uint64_t RIP)
 			     "pop %%rcx;"
 			     "pop %%rbp;"
 			     : [ret]"=&a"(ret)
-			     : [host_rsp]"r"((uint64_t)RSP),
-			       [host_rip]"r"((uint64_t)RIP)
+			     : [host_rsp]"r"((uint64_t)HOST_RSP),
+			       [host_rip]"r"((uint64_t)HOST_RIP),
+				   [RIP] "m" (RIP),
+				   [RSP] "m" (RSP) 
 			     : "memory", "cc", "rbx", "r8", "r9", "r10",
 			       "r11", "r12", "r13", "r14", "r15");
 	return ret;
