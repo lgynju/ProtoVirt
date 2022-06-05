@@ -368,6 +368,8 @@ static __always_inline void myhandler(void)
  	printk(KERN_INFO "enter the exit handler..........\n");
 	//here is the exit handler
 	printk(KERN_INFO "VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
+	uint64_t rip = vmreadz(GUEST_RIP);
+	vmwrite(GUEST_RIP, (uint64_t)rip+2);
 	restore_volatile_regs();
 	__asm__ __volatile__("vmresume");
 
@@ -389,12 +391,14 @@ bool initVmcs(void) {
 
 
 bool initVmLaunchProcess(void){
-	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL); //this is global
+	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
+	//this need to be deleted.
 	//int vmlaunch_status = _vmlaunch();
 	int vmlaunch_status = vmlaunch2(handler_rsp,(unsigned long)&myhandler);
 	if (vmlaunch_status != 0){
 		return false;
 	}
+guest_start:
 	return true;
 }
 
