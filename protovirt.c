@@ -362,19 +362,6 @@ static void guest_code(void)
 	print_regs();
 }
 
-static __always_inline void myhandler(void)
-{
- 	save_volatile_regs();
- 	printk(KERN_INFO "enter the exit handler..........\n");
-	//here is the exit handler
-	printk(KERN_INFO "VM exit reason is %lu!\n", (unsigned long)vmExit_reason());
-	uint64_t rip = vmreadz(GUEST_RIP);
-	vmwrite(GUEST_RIP, (uint64_t)rip+2);
-	restore_volatile_regs();
-	__asm__ __volatile__("vmresume");
-
-}
-
 bool initVmcs(void) {
 	g_vmStack = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
 	/*
@@ -390,16 +377,59 @@ bool initVmcs(void) {
 }
 
 
-bool initVmLaunchProcess(void){
-	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL);
-	//this need to be deleted.
-	//int vmlaunch_status = _vmlaunch();
-	int vmlaunch_status = vmlaunch2(handler_rsp,(unsigned long)&myhandler);
-	if (vmlaunch_status != 0){
-		return false;
-	}
-guest_start:
+static __always_inline void myhandler(void)
+{
+ 	save_volatile_regs();
+	printk(KERN_INFO "================Enter the Host code\n");
+ 	printk(KERN_INFO "Enter VM exit with reason %lu!\n", (unsigned long)vmExit_reason());
+	uint64_t exit_len = vmreadz(VM_EXIT_INSTRUCTION_LEN);
+	printk(KERN_INFO "Exit instruction len %lu!\n", exit_len);
+	uint64_t rip = vmreadz(GUEST_RIP);
+	vmwrite(GUEST_RIP, (uint64_t)rip+exit_len);
+
+	restore_volatile_regs();
+	__asm__ __volatile__("vmresume");
+}
+
+static __always_inline bool intoMatrix(void)
+{
+	restore_volatile_regs();
+	printk(KERN_INFO "----------------Enter the Guest code\n");
+	printk(KERN_INFO "Ready to execute cpuid!\n");
+	asm volatile("cpuid");
+	printk(KERN_INFO "Resume the virtual machine!\n");
 	return true;
+}
+
+bool initVmLaunchProcess(void){
+	int64_t* handler_rsp = kzalloc(MYPAGE_SIZE,GFP_KERNEL);	//this need to be deleted.
+	int64_t host_rsp_data = handler_rsp;
+	int64_t host_rip_data = (unsigned long)&myhandler;
+
+	save_volatile_regs();
+	__asm__ __volatile__(
+		"vmwrite %[host_rsp], %[host_rsp_code];"
+		"vmwrite %[host_rip], %[host_rip_code];"
+		"mov %%rsp, %%rax;"
+		"vmwrite %%rax, %[guest_rsp_code];"
+		"lea 6(%%rip), %%rbx;"
+		"vmwrite %%rbx, %[guest_rip_code];"
+		"vmlaunch;"
+		:
+		: [host_rsp_code] "r"((uint64_t)HOST_RSP),
+		  [host_rip_code] "r"((uint64_t)HOST_RIP),
+		  [host_rip] "m"(host_rip_data),
+		  [host_rsp] "m"(host_rsp_data),
+		  [guest_rsp_code] "r"((uint64_t)GUEST_RSP),
+		  [guest_rip_code] "r"((uint64_t)GUEST_RIP)
+		: "memory", "cc", "rax", "rbx");
+	//vmlaunch_status = vmlaunch2(input_rsp,input_rip);
+	//if (vmlaunch_status != 0){
+	// 	return false;
+	// } else{
+guest_start:
+	return intoMatrix();
+	//}
 }
 
 bool vmxoffOperation(void)
@@ -458,13 +488,13 @@ int __init start_init(void)
 		printk(KERN_INFO "VMLAUNCH succeeded! CONTINUING");
 	}
 
-    if (!vmxoffOperation()) {
-		printk(KERN_INFO "VMXOFF operation failed! EXITING");
-		return 0;
-	}
-	else {
-		printk(KERN_INFO "VMXOFF Operation succeeded! CONTINUING\n");
-	}
+    // if (!vmxoffOperation()) {
+	// 	printk(KERN_INFO "VMXOFF operation failed! EXITING");
+	// 	return 0;
+	// }
+	// else {
+	// 	printk(KERN_INFO "VMXOFF Operation succeeded! CONTINUING\n");
+	// }
     return 0;
 }
 

@@ -1,0 +1,295 @@
+[   41.833310] usb 2-2.1: USB disconnect, device number 4
+[   42.298302] systemd-journald[373]: Successfully sent stream file descriptor to service manager.
+[   42.375486] systemd-journald[373]: Successfully sent stream file descriptor to service manager.
+[   42.412750] systemd-journald[373]: Successfully sent stream file descriptor to service manager.
+[   42.516153] usb 2-2.1: new full-speed USB device number 5 using uhci_hcd
+[   42.657595] usb 2-2.1: New USB device found, idVendor=0e0f, idProduct=0008, bcdDevice= 1.00
+[   42.661805] usb 2-2.1: New USB device strings: Mfr=1, Product=2, SerialNumber=3
+[   42.665216] usb 2-2.1: Product: Virtual Bluetooth Adapter
+[   42.666529] usb 2-2.1: Manufacturer: VMware
+[   42.667536] usb 2-2.1: SerialNumber: 000650268328
+[   48.099834] systemd-journald[373]: Data hash table of /run/log/journal/ac70feb952b946dfa5149d6578fc65c7/system.journal has a fill level at 75.0 (6689 of 8917 items, 5136384 file size, 767 bytes per hash table item), suggesting rotation.
+[   48.116903] systemd-journald[373]: /run/log/journal/ac70feb952b946dfa5149d6578fc65c7/system.journal: Journal header limits reached or header out-of-date, rotating.
+[   48.129509] systemd-journald[373]: Rotating...
+[   48.130770] systemd-journald[373]: Reserving 8917 entries in hash table.
+[   48.132134] systemd-journald[373]: Vacuuming...
+[   48.133076] systemd-journald[373]: Vacuuming done, freed 0B of archived journals on disk.
+[   48.265424] protovirt: loading out-of-tree module taints kernel.
+[   48.266627] protovirt: module license 'GPL V3' taints kernel.
+[   48.267745] Disabling lock debugging due to kernel taint
+[   48.272330] protovirt: module verification failed: signature and/or required key missing - tainting kernel
+[   48.274427] VMX support present! CONTINUING
+[   48.274431] write MSR_IA32_FEATURE_CONTROL register
+[   48.280137] VMX Operation succeeded! CONTINUING
+[   48.280157] VMCS Allocation succeeded! CONTINUING
+[   48.281379] Initializing of control fields to the most basic settings succeeded! CONTINUING
+[   48.282277] ----------------Enter the Guest code
+[   48.284966] Ready to execute cpuid!
+[   48.285703] ================Enter the Host code
+[   48.286542] Enter VM exit with reason 10!
+[   48.287288] Exit instruction len 2!
+[   48.287942] Resume the virtual machine!
+[   48.288759] Kernel panic - not syncing: stack-protector: Kernel stack is corrupted in: initVmLaunchProcess+0xde/0xe0 [protovirt]
+[   48.291126] CPU: 0 PID: 2039 Comm: insmod Tainted: P           OE     4.19.237 #1
+[   48.292673] Hardware name: VMware, Inc. VMware Virtual Platform/440BX Desktop Reference Platform, BIOS 6.00 11/12/2020
+[   48.294858] Call Trace:
+[   48.295403]  dump_stack+0x6d/0x8b
+[   48.296100]  panic+0xe4/0x247
+[   48.296732]  ? initVmLaunchProcess+0xde/0xe0 [protovirt]
+[   48.297978]  __stack_chk_fail+0x19/0x20
+[   48.298853]  initVmLaunchProcess+0xde/0xe0 [protovirt]
+[   48.299939] WARNING: kernel stack frame pointer at 0000000031e9db2b in insmod:2039 has bad value 00000000fac16a49
+[   48.299942] unwind stack type:0 next_sp:          (null) mask:0x2 graph_idx:0
+[   48.299943] 000000000c5639dc: ffffc90002497b68 (0xffffc90002497b68)
+[   48.299949] 00000000e263f285: ffffffff810332f3 (show_trace_log_lvl+0x223/0x3e0)
+[   48.299950] 00000000004e5945: 0000000000000000 ...
+[   48.299959] 00000000c350f46b: ffffffff822b7529 (.LC1+0x633/0x8b8)
+[   48.299959] 000000005b36ce13: ffff88811f47bb00 (0xffff88811f47bb00)
+[   48.299960] 00000000314b9575: ffffffffc051fede (initVmLaunchProcess+0xde/0xe0 [protovirt])
+[   48.299960] 000000006e99786b: 0000000000000000 ...
+[   48.299961] 00000000932cc61b: 0000000000000002 (0x2)
+[   48.299961] 00000000a4f326d5: 0000000000000001 (0x1)
+[   48.299961] 00000000dc504c0e: ffffc90002494000 (0xffffc90002494000)
+[   48.299961] 000000001744e085: ffffc90002498000 (0xffffc90002498000)
+[   48.299962] 00000000a53b3067: 0000000000000000 ...
+[   48.299962] 00000000d9c3c919: ffffc90002494000 (0xffffc90002494000)
+[   48.299962] 00000000fe2d6170: ffffc90002498000 (0xffffc90002498000)
+[   48.299962] 00000000bc928b0a: 0000000000000000 ...
+[   48.299963] 00000000fe461f5b: 0000000000000002 (0x2)
+[   48.299963] 00000000d5a1ea7d: ffff88811f47bb00 (0xffff88811f47bb00)
+[   48.299963] 000000002327f3c0: 0000000100000000 (0x100000000)
+[   48.299963] 000000009db90278: ffffc90002497c30 (0xffffc90002497c30)
+[   48.299964] 00000000fe5eca78: ffffc90002497a78 (0xffffc90002497a78)
+[   48.299964] 00000000cb6c6dd2: ffffffffc051fede (initVmLaunchProcess+0xde/0xe0 [protovirt])
+[   48.299965] 000000003ba3c827: 0000000000000000 ...
+[   48.299965] 00000000b3758d03: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.299965] 000000009b345d34: 0000000000000086 (0x86)
+[   48.299965] 000000004840c099: 0000000000000000 ...
+[   48.299966] 00000000116cc388: ffffc90002497c30 (0xffffc90002497c30)
+[   48.299966] 0000000066a237b0: 0000000000000000 ...
+[   48.299966] 0000000077c3aace: ffffc90002497e78 (0xffffc90002497e78)
+[   48.299966] 00000000e90a3a60: ffffc90002497b78 (0xffffc90002497b78)
+[   48.299967] 00000000aa304ad7: ffffffff810334f4 (show_stack+0x44/0x60)
+[   48.299967] 00000000e63b18b1: ffffc90002497b98 (0xffffc90002497b98)
+[   48.299968] 00000000894ff1b1: ffffffff81a248a4 (dump_stack+0x6d/0x8b)
+[   48.299969] 000000004c037adc: c2bb7292c2d4c900 (0xc2bb7292c2d4c900)
+[   48.299971] 0000000049dd507d: ffffffff822ca150 (.LC73+0x28e/0x3b3)
+[   48.299971] 000000000224c41c: ffffc90002497c20 (0xffffc90002497c20)
+[   48.299973] 00000000dfcd161a: ffffffff81a1edbc (panic+0xe4/0x247)
+[   48.299974] 0000000024187c68: ffffc90000000010 (0xffffc90000000010)
+[   48.299974] 0000000064ed548c: ffffc90002497c30 (0xffffc90002497c30)
+[   48.299974] 000000001662ccbb: ffffc90002497bc8 (0xffffc90002497bc8)
+[   48.299974] 00000000ff834a6d: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.299975] 00000000cbbc3851: ffffc90002497c30 (0xffffc90002497c30)
+[   48.299975] 000000002c2d74c0: ffffffffc051fede (initVmLaunchProcess+0xde/0xe0 [protovirt])
+[   48.299976] 0000000061e33323: 0000000000000000 ...
+[   48.299976] 0000000075c2be4f: 0000000000000006 (0x6)
+[   48.299976] 00000000c6929f0d: 00000000000006ae (0x6ae)
+[   48.299976] 00000000216c0a4a: 00000000000006ae (0x6ae)
+[   48.299977] 00000000b04d1ade: c2bb7292c2d4c978 (0xc2bb7292c2d4c978)
+[   48.299977] 000000007d166c30: ffff888132272000 (0xffff888132272000)
+[   48.299977] 00000000960442f5: 00000000ffffffff (0xffffffff)
+[   48.299978] 000000001b45456b: ffff8881173c5460 (0xffff8881173c5460)
+[   48.299978] 000000006efcc91d: 0000000000000000 ...
+[   48.299978] 00000000307e6681: ffffc90002497c30 (0xffffc90002497c30)
+[   48.299979] 00000000168a813d: ffffffff810946f9 (__stack_chk_fail+0x19/0x20)
+[   48.299979] 0000000031e9db2b: ffff888132271ff8 (0xffff888132271ff8)
+[   48.299980] 00000000fa977184: ffffffffc051fede (initVmLaunchProcess+0xde/0xe0 [protovirt])
+[   48.299980] 00000000ee5e2f5a: ffff888132272000 (0xffff888132272000)
+[   48.299980] 0000000068d3d572: ffffffffc051f000 (0xffffffffc051f000)
+[   48.299981] 00000000ee755419: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.299981] 00000000ed978a88: 0000000000010800 (0x10800)
+[   48.299981] 000000000f40a169: ffffc90002497c70 (0xffffc90002497c70)
+[   48.299982] 00000000f357dd93: ffffffffc05240ac (init_module+0xac/0x1000 [protovirt])
+[   48.299982] 000000002d7a6f88: ffffc90002497ce8 (0xffffc90002497ce8)
+[   48.299987] 00000000e9440275: ffffffff810028c2 (do_one_initcall+0x52/0x1e0)
+[   48.299988] 00000000e4002fa0: ffffc90002747000 (0xffffc90002747000)
+[   48.299988] 000000000798839f: ffffea0002ea5d00 (0xffffea0002ea5d00)
+[   48.299991] 000000000a167141: ffffffff81a3081a (_cond_resched+0x1a/0x50)
+[   48.299991] 000000008a399023: 00000000006000c0 (0x6000c0)
+[   48.299991] 000000007ca1978f: ffffc90002497ce8 (0xffffc90002497ce8)
+[   48.299998] 00000000598578ad: ffffffff8127b854 (kmem_cache_alloc_trace+0x184/0x1f0)
+[   48.299998] 000000008d5f3807: ffff888119617480 (0xffff888119617480)
+[   48.299998] 00000000bfbd848c: 0000000000000018 (0x18)
+[   48.299999] 000000002b450daa: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.300000] 00000000ad9c7b71: ffffffffc0521000 (_note_6+0x8fc/0xfffffffffffff8fc [protovirt])
+[   48.300000] 00000000fe702248: 0000000000000001 (0x1)
+[   48.300000] 00000000aba16966: ffff8881173c5460 (0xffff8881173c5460)
+[   48.300001] 00000000bf964b15: ffffffffc0521018 (__this_module+0x18/0xfffffffffffff000 [protovirt])
+[   48.300001] 00000000e378cdc6: ffffc90002497d10 (0xffffc90002497d10)
+[   48.300002] 00000000b4b3279a: ffffffff81a1f668 (do_init_module+0x4f/0x203)
+[   48.300003] 00000000c23fd44b: ffffffffc0521000 (_note_6+0x8fc/0xfffffffffffff8fc [protovirt])
+[   48.300003] 00000000abe53a4c: 0000000000000001 (0x1)
+[   48.300003] 00000000966f0a9a: ffff8880ba838720 (0xffff8880ba838720)
+[   48.300004] 000000008c07a2bf: ffffc90002497e50 (0xffffc90002497e50)
+[   48.300009] 000000003f43dda1: ffffffff8113e5e0 (load_module+0x22f0/0x2b40)
+[   48.300009] 00000000bd49e80d: ffffc90002711000 (0xffffc90002711000)
+[   48.300010] 000000007dbba1ff: ffffc90002745670 (0xffffc90002745670)
+[   48.300010] 000000006e193145: 0000000000000648 (0x648)
+[   48.300010] 000000007ecabfdb: ffffffff00000008 (0xffffffff00000008)
+[   48.300011] 00000000a4c497cd: ffffffffc0521210 (__this_module+0x210/0xfffffffffffff000 [protovirt])
+[   48.300011] 0000000021690248: ffffffff00000001 (0xffffffff00000001)
+[   48.300012] 00000000bf0dfd8d: ffffffffc05211c0 (__this_module+0x1c0/0xfffffffffffff000 [protovirt])
+[   48.300014] 00000000f2762726: ffff888000000001 (0xffff888000000001)
+[   48.300014] 0000000001e19309: ffff8880ba838730 (0xffff8880ba838730)
+[   48.300014] 000000008f76fdec: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.300014] 000000009273319f: 0000000000000000 ...
+[   48.300015] 00000000f26bf316: ffff88811f7b5c00 (0xffff88811f7b5c00)
+[   48.300015] 000000007738d9b6: ffffc90002711000 (0xffffc90002711000)
+[   48.300015] 00000000aed1477b: 00000000000346f0 (0x346f0)
+[   48.300015] 000000002c0b92c1: 0000000000000000 ...
+[   48.300016] 000000005129a26a: ffffffff00000000 (0xffffffff00000000)
+[   48.300016] 000000005e605753: 0000000000000000 ...
+[   48.300016] 00000000f6e73528: ffffc90000000000 (0xffffc90000000000)
+[   48.300016] 00000000e4e75137: 0000000000000000 ...
+[   48.300017] 000000005ee3f153: ffff888100000000 (0xffff888100000000)
+[   48.300017] 0000000068a77798: 0000000000000000 ...
+[   48.300017] 00000000fc605a7c: ffffc90000000000 (0xffffc90000000000)
+[   48.300017] 000000007697773f: 0000000000000000 ...
+[   48.300017] 00000000dc1de216: ffffc90000000000 (0xffffc90000000000)
+[   48.300018] 000000007360f51b: 00006c656e72656b (0x6c656e72656b)
+[   48.300018] 0000000083e69eba: 0000000000000000 ...
+[   48.300018] 00000000d878e0ed: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.300019] 00000000e14ea7b1: ffffc90002497e78 (0xffffc90002497e78)
+[   48.300019] 00000000b13a623d: ffffc90002497e68 (0xffffc90002497e68)
+[   48.300019] 0000000055eee7c6: 0000000000000000 ...
+[   48.300019] 000000006d3dbc65: 0000556b2544d26b (0x556b2544d26b)
+[   48.300020] 000000007608dd93: 0000000000000003 (0x3)
+[   48.300020] 000000001e05063d: 0000000000000000 ...
+[   48.300020] 00000000a928e2f5: ffffc90002497f18 (0xffffc90002497f18)
+[   48.300021] 00000000f4646a16: ffffffff8113f0f5 (__do_sys_finit_module+0xe5/0x120)
+[   48.300022] 00000000af88154a: ffffffff8113f0f5 (__do_sys_finit_module+0xe5/0x120)
+[   48.300022] 000000007a3442b9: 00000000000346f0 (0x346f0)
+[   48.300022] 00000000cb0814ef: ffffc90002711000 (0xffffc90002711000)
+[   48.300022] 00000000da7d3c52: ffffc9000271282a (0xffffc9000271282a)
+[   48.300023] 00000000a859905e: ffffc90002712880 (0xffffc90002712880)
+[   48.300023] 00000000af06947a: ffffc90002711000 (0xffffc90002711000)
+[   48.300023] 000000006e301374: 00000000000346f0 (0x346f0)
+[   48.300024] 00000000042c89ab: ffffc90002744cf0 (0xffffc90002744cf0)
+[   48.300024] 000000006ebaaed2: ffffc90002744b68 (0xffffc90002744b68)
+[   48.300024] 0000000042cb3da8: ffffc9000272c6c0 (0xffffc9000272c6c0)
+[   48.300024] 00000000c63bf8db: 0000000000003000 (0x3000)
+[   48.300025] 00000000dbfd26d4: 0000000000003210 (0x3210)
+[   48.300025] 000000008b3de0e0: 0000000000000000 ...
+[   48.300025] 000000003f492307: 00000000000018e0 (0x18e0)
+[   48.300025] 000000001b6e3662: 0000002700000026 (0x2700000026)
+[   48.300026] 00000000bdadc018: 0000000000000012 (0x12)
+[   48.300026] 000000009f26f8a4: 000000000000000f (0xf)
+[   48.300026] 000000001f4678bf: 3d44bb92c09db700 (0x3d44bb92c09db700)
+[   48.300026] 00000000b1d5fb6a: 0000000000000000 ...
+[   48.300027] 0000000079f31ede: ffffc90002497f58 (0xffffc90002497f58)
+[   48.300027] 000000007a35e6c1: 0000000000000000 ...
+[   48.300027] 00000000fd9bc433: ffffc90002497f28 (0xffffc90002497f28)
+[   48.300028] 0000000037d40c90: ffffffff8113f14a (__x64_sys_finit_module+0x1a/0x20)
+[   48.300028] 00000000529769ef: ffffc90002497f48 (0xffffc90002497f48)
+[   48.300029] 00000000d4f7af9f: ffffffff8100425a (do_syscall_64+0x5a/0x110)
+[   48.300029] 0000000071f1ac73: 0000000000000000 ...
+[   48.300030] 000000002febf5fd: ffffffff81c00088 (entry_SYSCALL_64_after_hwframe+0x44/0xa9)
+[   48.300030] 0000000096b7f9c8: 0000000000000000 ...
+[   48.300030] 00000000ca60f36a: 0000556b2708b120 (0x556b2708b120)
+[   48.300031] 00000000d38a081b: 0000000000000000 ...
+[   48.300031] 00000000a2537677: 0000556b2544d26b (0x556b2544d26b)
+[   48.300031] 00000000aaa3407a: 0000556b2708c1e0 (0x556b2708c1e0)
+[   48.300031] 000000004c51e0f4: 0000000000000206 (0x206)
+[   48.300033] 000000006b79a9a3: 0000000000000003 (0x3)
+[   48.300033] 000000006ab4a8e6: 00007fb3d596dea0 (0x7fb3d596dea0)
+[   48.300034] 00000000eace8c87: 0000000000000000 ...
+[   48.300034] 00000000877455d6: ffffffffffffffda (0xffffffffffffffda)
+[   48.300034] 000000001c2eef4d: 00007fb3d56a85d9 (0x7fb3d56a85d9)
+[   48.300034] 0000000099fdab93: 0000000000000000 ...
+[   48.300035] 00000000a4ee5fe4: 0000556b2544d26b (0x556b2544d26b)
+[   48.300035] 000000002e38e1e7: 0000000000000003 (0x3)
+[   48.300035] 0000000091a087fc: 0000000000000139 (0x139)
+[   48.300035] 00000000673fd24c: 00007fb3d56a85d9 (0x7fb3d56a85d9)
+[   48.300036] 0000000090b0c2ef: 0000000000000033 (0x33)
+[   48.300036] 00000000e007ea02: 0000000000000206 (0x206)
+[   48.300036] 00000000a291bee7: 00007ffcb994f348 (0x7ffcb994f348)
+[   48.300036] 000000004c6c1b39: 000000000000002b (0x2b)
+[   48.300037]  ? 0xffffffffc051f000
+[   48.514321]  ? init_module+0xac/0x1000 [protovirt]
+[   48.515327]  ? do_one_initcall+0x52/0x1e0
+[   48.516168]  ? _cond_resched+0x1a/0x50
+[   48.517034]  ? kmem_cache_alloc_trace+0x184/0x1f0
+[   48.518022]  ? do_init_module+0x4f/0x203
+[   48.518850]  ? load_module+0x22f0/0x2b40
+[   48.519679]  ? __do_sys_finit_module+0xe5/0x120
+[   48.520625]  ? __do_sys_finit_module+0xe5/0x120
+[   48.521572]  ? __x64_sys_finit_module+0x1a/0x20
+[   48.522565]  ? do_syscall_64+0x5a/0x110
+[   48.523398]  ? entry_SYSCALL_64_after_hwframe+0x44/0xa9
+[   48.525043] ================Enter the Host code
+[   48.525899] Enter VM exit with reason 31!
+[   48.526649] Exit instruction len 2!
+[   48.527314] ================Enter the Host code
+[   48.528167] Enter VM exit with reason 32!
+[   48.528915] Exit instruction len 2!
+[   48.529583] ================Enter the Host code
+[   48.530423] Enter VM exit with reason 31!
+[   48.531167] Exit instruction len 2!
+[   48.531829] ================Enter the Host code
+[   48.532665] Enter VM exit with reason 32!
+[   48.533423] Exit instruction len 2!
+[   48.534076] ================Enter the Host code
+[   48.534917] Enter VM exit with reason 31!
+[   48.535660] Exit instruction len 2!
+[   48.536319] ================Enter the Host code
+[   48.537154] Enter VM exit with reason 32!
+[   48.537977] Exit instruction len 2!
+[   48.538631] ================Enter the Host code
+[   48.539468] Enter VM exit with reason 31!
+[   48.540210] Exit instruction len 2!
+[   48.540863] ================Enter the Host code
+[   48.541705] Enter VM exit with reason 32!
+[   48.542447] Exit instruction len 2!
+[   48.543100] ================Enter the Host code
+[   48.543942] Enter VM exit with reason 31!
+[   48.544690] Exit instruction len 2!
+[   48.545351] ================Enter the Host code
+[   48.546239] Enter VM exit with reason 32!
+[   48.546983] Exit instruction len 2!
+[   48.547645] ================Enter the Host code
+[   48.548483] Enter VM exit with reason 31!
+[   48.549232] Exit instruction len 2!
+[   48.549957] ================Enter the Host code
+[   48.550809] Enter VM exit with reason 32!
+[   48.551556] Exit instruction len 2!
+[   48.552229] ================Enter the Host code
+[   48.553074] Enter VM exit with reason 31!
+[   48.553840] Exit instruction len 2!
+[   48.554506] ================Enter the Host code
+[   48.555361] Enter VM exit with reason 32!
+[   48.556103] Exit instruction len 2!
+[   48.556759] ================Enter the Host code
+[   48.557595] Enter VM exit with reason 32!
+[   48.558338] Exit instruction len 2!
+[   48.558991] ================Enter the Host code
+[   48.559826] Enter VM exit with reason 32!
+[   48.560570] Exit instruction len 2!
+[   48.561230] ================Enter the Host code
+[   48.562064] Enter VM exit with reason 32!
+[   48.562805] Exit instruction len 2!
+[   48.563458] ================Enter the Host code
+[   48.564292] Enter VM exit with reason 32!
+[   48.565032] Exit instruction len 2!
+[   48.565689] ================Enter the Host code
+[   48.566541] Enter VM exit with reason 32!
+[   48.567308] Exit instruction len 2!
+[   48.567972] ================Enter the Host code
+[   48.568807] Enter VM exit with reason 32!
+[   48.569556] Exit instruction len 2!
+[   48.570214] ================Enter the Host code
+[   48.571049] Enter VM exit with reason 31!
+[   48.571795] Exit instruction len 2!
+[   48.572454] ================Enter the Host code
+[   48.573299] Enter VM exit with reason 31!
+[   48.574040] Exit instruction len 2!
+[   48.574699] ================Enter the Host code
+[   48.575550] Enter VM exit with reason 32!
+[   48.576297] Exit instruction len 2!
+[   48.576953] ================Enter the Host code
+[   48.577794] Enter VM exit with reason 31!
+[   48.578541] Exit instruction len 2!
+PANIC: stack-protector: Kernel stack is corrupted in: initVmLaunchProcess+0xde/0xe0 [protovirt]
+
+Entering kdb (current=0xffff88811f47bb00, pid 2039) on processor 0 due to Keyboard Entry
+[0]kdb> 

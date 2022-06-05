@@ -142,28 +142,14 @@ static inline int _vmlaunch(void)
 }
 
 
-static inline int vmlaunch2(uint64_t RSP, uint64_t RIP)
+static int vmlaunch2(uint64_t RSP, uint64_t RIP)
 {
-	int ret;
-
-	__asm__ __volatile__("push %%rbp;"
-			     "push %%rcx;"
-			     "push %%rdx;"
-			     "push %%rsi;"
-			     "push %%rdi;"
-			     "push $0;"
+	int ret = 1;
+	__asm__ __volatile__(
 			     "vmwrite %[RSP], %[host_rsp];"
-			     //"lea 1f(%%rip), %%rax;"
 			     "vmwrite %[RIP], %[host_rip];"
 			     "vmlaunch;"
-			     "incq (%%rsp);"
-			     "1: pop %%rax;"
-			     "pop %%rdi;"
-			     "pop %%rsi;"
-			     "pop %%rdx;"
-			     "pop %%rcx;"
-			     "pop %%rbp;"
-			     : [ret]"=&a"(ret)
+			     :
 			     : [host_rsp]"r"((uint64_t)HOST_RSP),
 			       [host_rip]"r"((uint64_t)HOST_RIP),
 				   [RIP] "m" (RIP),
